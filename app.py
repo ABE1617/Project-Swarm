@@ -281,6 +281,44 @@ def delete_workflow(workflow_id):
             'error': str(e)
         }), 500
 
+@app.route('/api/webhooks/<path:webhook_path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
+def handle_webhook(webhook_path):
+    """Handle incoming webhook requests for webhook_trigger nodes"""
+    try:
+        # Import the webhook_trigger module
+        try:
+            webhook_module = importlib.import_module('control_nodes.webhook_trigger')
+        except ImportError:
+            return jsonify({
+                'error': 'Webhook functionality not available'
+            }), 500
+        
+        # Extract data from the request
+        method = request.method
+        headers = request.headers
+        args = request.args
+        
+        # Get JSON or form data
+        json_data = request.get_json(silent=True)
+        form_data = request.form.to_dict() if request.form else None
+        
+        # Pass to the webhook handler in the module
+        if hasattr(webhook_module, 'handle_webhook'):
+            response_data, status_code = webhook_module.handle_webhook(
+                webhook_path, method, headers, args, json_data, form_data
+            )
+            return jsonify(response_data), status_code
+        else:
+            return jsonify({
+                'error': 'Webhook handler not implemented'
+            }), 501
+    
+    except Exception as e:
+        app.logger.error(f"Error handling webhook request: {str(e)}")
+        return jsonify({
+            'error': str(e)
+        }), 500
+
 @app.route('/api/node-types', methods=['GET'])
 @login_required
 def get_node_types():

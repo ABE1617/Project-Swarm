@@ -743,6 +743,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function executeWorkflow() {
         const workflow = serializeWorkflow();
         
+        // Clear any previous error states
+        clearNodeErrorStates();
+        
+        // Show execution progress
+        showExecutionProgress(0);
+        
+        // Clear debug logs
+        clearDebugLogs();
+        
         executeWorkflowBtn.disabled = true;
         executeWorkflowBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Executing...';
         
@@ -755,23 +764,45 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
+            // Hide progress bar
+            hideExecutionProgress();
+            
             // Re-enable button
             executeWorkflowBtn.disabled = false;
             executeWorkflowBtn.innerHTML = '<i class="fas fa-play me-1"></i> Execute';
             
             if (data.success) {
+                // Show results in modal
                 displayWorkflowResults(data.results);
+                
+                // Update debug logs
+                if (data.results.debug_logs) {
+                    populateDebugLogs(data.results.debug_logs);
+                }
+                
+                // Highlight nodes with their status
+                if (data.results.node_statuses) {
+                    updateNodeStatuses(data.results.node_statuses);
+                }
+                
+                // Switch to debug tab if there are errors
+                if (data.results.errors && data.results.errors.length > 0) {
+                    // Switch to debug tab
+                    document.getElementById('debug-tab').click();
+                }
             } else {
                 alert('Error executing workflow: ' + (data.error || 'Unknown error'));
             }
         })
         .catch(error => {
-            console.error('Error executing workflow:', error);
-            alert('Error executing workflow');
+            // Hide progress bar
+            hideExecutionProgress();
             
-            // Re-enable button
             executeWorkflowBtn.disabled = false;
             executeWorkflowBtn.innerHTML = '<i class="fas fa-play me-1"></i> Execute';
+            
+            console.error('Error executing workflow:', error);
+            alert('Error executing workflow');
         });
     }
     
