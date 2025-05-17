@@ -1,0 +1,35 @@
+{
+  "nodes": [
+    {
+      "id": "http1",
+      "type": "http_request",
+      "config": {
+        "url": "https://jsonplaceholder.typicode.com/posts",
+        "method": "GET"
+      }
+    },
+    {
+      "id": "transform1",
+      "type": "data_transform",
+      "config": {
+        "operation": "filter",
+        "input": "http1.response",
+        "filter_condition": "item.userId == 1"
+      }
+    },
+    {
+      "id": "file1",
+      "type": "write_file",
+      "config": {
+        "path": "user1_posts.txt",
+        "content": "{{context.transform1.result}}",
+        "mode": "overwrite"
+      }
+    }
+  ],
+  "connections": [
+    { "source": "http1", "target": "transform1" },
+    { "source": "transform1", "target": "file1" }
+  ],
+  "variables": {}
+}
