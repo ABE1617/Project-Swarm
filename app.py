@@ -119,6 +119,8 @@ def workflow_editor():
 @app.route('/api/run-workflow', methods=['POST'])
 @login_required
 def run_workflow():
+    import traceback  # Import traceback module for error details
+    
     data = request.json
     
     # Add base URL for webhook nodes

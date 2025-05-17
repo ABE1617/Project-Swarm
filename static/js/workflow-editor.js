@@ -207,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const nodeEl = document.createElement('div');
         nodeEl.id = nodeId;
         nodeEl.className = 'workflow-node';
+        nodeEl.dataset.nodeType = nodeType; // Store node type in dataset
         nodeEl.style.left = `${x}px`;
         nodeEl.style.top = `${y}px`;
         
@@ -248,8 +249,42 @@ document.addEventListener('DOMContentLoaded', function() {
             nodePorts.appendChild(inputPort);
         }
         
-        // Output ports
-        if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
+        // Special handling for If node - create two distinct output ports
+        if (nodeType === 'if_condition') {
+            // True output
+            const trueOutputPort = document.createElement('div');
+            trueOutputPort.className = 'output-port true-port';
+            
+            const trueOutputHandle = document.createElement('div');
+            trueOutputHandle.className = 'port-handle output-handle true-handle';
+            trueOutputHandle.setAttribute('data-port', 'true');
+            
+            const trueOutputLabel = document.createElement('div');
+            trueOutputLabel.className = 'port-label';
+            trueOutputLabel.textContent = 'True';
+            
+            trueOutputPort.appendChild(trueOutputLabel);
+            trueOutputPort.appendChild(trueOutputHandle);
+            nodePorts.appendChild(trueOutputPort);
+            
+            // False output
+            const falseOutputPort = document.createElement('div');
+            falseOutputPort.className = 'output-port false-port';
+            
+            const falseOutputHandle = document.createElement('div');
+            falseOutputHandle.className = 'port-handle output-handle false-handle';
+            falseOutputHandle.setAttribute('data-port', 'false');
+            
+            const falseOutputLabel = document.createElement('div');
+            falseOutputLabel.className = 'port-label';
+            falseOutputLabel.textContent = 'False';
+            
+            falseOutputPort.appendChild(falseOutputLabel);
+            falseOutputPort.appendChild(falseOutputHandle);
+            nodePorts.appendChild(falseOutputPort);
+        } 
+        // Regular output ports for other nodes
+        else if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
             const outputPort = document.createElement('div');
             outputPort.className = 'output-port';
             
@@ -266,9 +301,57 @@ document.addEventListener('DOMContentLoaded', function() {
             nodePorts.appendChild(outputPort);
         }
         
+        // Node content - special handling for certain nodes
+        const nodeContent = document.createElement('div');
+        nodeContent.className = 'node-content';
+        
+        // Special handling for Manual Trigger node
+        if (nodeType === 'manual_trigger') {
+            const startButton = document.createElement('button');
+            startButton.className = 'btn btn-success btn-sm start-workflow-btn';
+            startButton.innerHTML = '<i class="fas fa-play"></i> Start';
+            startButton.title = 'Execute workflow starting from here';
+            startButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Don't trigger node selection
+                executeWorkflow();
+            });
+            
+            nodeContent.appendChild(startButton);
+        }
+        
+        // Quick action buttons (only visible when node is selected)
+        const quickActions = document.createElement('div');
+        quickActions.className = 'node-quick-actions';
+        quickActions.style.display = 'none'; // Hidden by default
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-sm btn-primary quick-edit-btn';
+        editBtn.innerHTML = '<i class="fas fa-cog"></i>';
+        editBtn.title = 'Edit Node';
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Don't trigger node selection
+            showConfigPanel(nodeId);
+        });
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-sm btn-danger quick-delete-btn';
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteBtn.title = 'Delete Node';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Don't trigger node selection
+            if (confirm('Are you sure you want to delete this node?')) {
+                deleteSelectedNode();
+            }
+        });
+        
+        quickActions.appendChild(editBtn);
+        quickActions.appendChild(deleteBtn);
+        
         // Assemble node
         nodeEl.appendChild(nodeHeader);
         nodeEl.appendChild(nodePorts);
+        nodeEl.appendChild(nodeContent);
+        nodeEl.appendChild(quickActions);
         canvas.appendChild(nodeEl);
         
         // Add node to state
@@ -279,9 +362,10 @@ document.addEventListener('DOMContentLoaded', function() {
             config: {}
         };
         
-        // Make node draggable
+        // Make node draggable with improved configuration
         jsPlumbInstance.draggable(nodeId, {
             grid: [10, 10],
+            containment: true, // Contain within canvas but allow scrolling
             stop: function(event) {
                 // Update node position in state
                 nodes[nodeId].position.x = parseInt(event.pos[0]);
@@ -289,16 +373,37 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Make end points
-        if (nodeTypeDef.inputs && nodeTypeDef.inputs.length > 0) {
+        // Make end points for Regular nodes
+        if (nodeType !== 'if_condition') {
+            if (nodeTypeDef.inputs && nodeTypeDef.inputs.length > 0) {
+                jsPlumbInstance.makeTarget(nodeEl.querySelector('.input-handle'), {
+                    anchor: 'Left',
+                    maxConnections: -1
+                });
+            }
+            
+            if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
+                jsPlumbInstance.makeSource(nodeEl.querySelector('.output-handle'), {
+                    anchor: 'Right',
+                    maxConnections: -1
+                });
+            }
+        } 
+        // Special endpoint configuration for If node
+        else {
+            // Make the input handle a target
             jsPlumbInstance.makeTarget(nodeEl.querySelector('.input-handle'), {
                 anchor: 'Left',
                 maxConnections: -1
             });
-        }
-        
-        if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
-            jsPlumbInstance.makeSource(nodeEl.querySelector('.output-handle'), {
+            
+            // Make the true and false handles sources
+            jsPlumbInstance.makeSource(nodeEl.querySelector('.true-handle'), {
+                anchor: 'Right',
+                maxConnections: -1
+            });
+            
+            jsPlumbInstance.makeSource(nodeEl.querySelector('.false-handle'), {
                 anchor: 'Right',
                 maxConnections: -1
             });
@@ -309,7 +414,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add connection to state
             connections.push({
                 source: info.sourceId,
-                target: info.targetId
+                target: info.targetId,
+                sourcePort: info.sourceId === nodeId ? info.source.dataset.port : undefined,
+                targetPort: info.targetId === nodeId ? info.target.dataset.port : undefined
             });
             
             // Remove guide when first connection is made
@@ -339,18 +446,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Select a node
     function selectNode(nodeId) {
-        // Clear any existing selection
+        // Hide quick actions on previously selected node
         if (selectedNodeId) {
-            document.getElementById(selectedNodeId)?.classList.remove('node-selected');
+            const prevNode = document.getElementById(selectedNodeId);
+            if (prevNode) {
+                prevNode.classList.remove('node-selected');
+                const prevQuickActions = prevNode.querySelector('.node-quick-actions');
+                if (prevQuickActions) {
+                    prevQuickActions.style.display = 'none';
+                }
+            }
         }
         
         // Update selected node
         selectedNodeId = nodeId;
         
-        // Highlight selected node
+        // Highlight selected node and show quick actions
         const nodeEl = document.getElementById(nodeId);
         if (nodeEl) {
             nodeEl.classList.add('node-selected');
+            
+            // Show quick action buttons
+            const quickActions = nodeEl.querySelector('.node-quick-actions');
+            if (quickActions) {
+                quickActions.style.display = 'flex';
+            }
         }
         
         // Show configuration panel
