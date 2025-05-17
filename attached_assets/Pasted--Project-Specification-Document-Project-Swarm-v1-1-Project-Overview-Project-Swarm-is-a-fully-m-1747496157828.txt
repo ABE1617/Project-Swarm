@@ -1,0 +1,215 @@
+🐝 Project Specification Document: Project Swarm v1.1
+📌 Project Overview
+Project Swarm is a fully modular, visual automation system inspired by n8n, designed to allow users to build workflow automations using a drag-and-drop interface in the browser. These workflows are saved as JSON files in the backend, and executed dynamically using Python-based node logic. The core idea is flexibility and scalability: developers can add new nodes simply by creating Python files — no modifications to the core are required.
+
+🔧 Technology Stack
+Layer	Technologies Used
+Backend	Python 3, Flask, jsonschema, importlib, requests
+Frontend	HTML, CSS, JavaScript, Bootstrap
+Workflow Storage	JSON files on disk (one per workflow)
+
+🎯 Key Features
+Feature	Description
+Node-based Automation	Users create task flows using modular nodes, each performing a single task
+Visual Drag-and-Drop Editor	GUI to visually create workflows like in n8n
+JSON-defined Workflows	Workflows are saved in the backend as structured JSON
+Scalable Node System	Add new nodes by simply creating a new Python file
+Flask REST API Backend	Executes workflows based on JSON received from the frontend
+Execution Engine	Dynamically loads and runs Control Node modules in correct order
+Control Nodes Folder	Houses all modular Python node logic (/control_nodes)
+Shared Context System	Allows data passing between nodes via shared variables
+Auth System (Optional)	Login/Register system using Flask endpoints
+
+🧱 Architecture Overview
+csharp
+Copy
+Edit
+[HTML/CSS/JS/Bootstrap Frontend GUI]
+     |
+     V
+[JSON Workflow Generator (in browser)]
+     |
+     V
+[Flask API Server (Python Backend)]
+     |
+     V
+[Execution Engine]
+     |
+     V
+[Control Nodes Folder (Python files)]
+📁 Folder Structure
+bash
+Copy
+Edit
+swarm/
+├── app.py                     # Flask app entry point
+├── execution_engine.py        # Core execution logic
+│
+├── /control_nodes/            # Python files (each = a node)
+│   ├── http_request.py
+│   ├── gmail_send.py
+│   └── write_file.py
+│
+├── /workflows/                # JSON files saved from GUI
+│   └── example_workflow.json
+│
+├── /static/                   # Frontend assets (Bootstrap, CSS, JS)
+│
+├── /templates/                # HTML templates (login, workflow builder)
+│
+├── /utils/                    # Schema validation and helpers
+│
+└── requirements.txt
+🧠 How It Works
+1. User Interaction
+User logs in or registers (optional)
+
+Enters the visual workflow editor (HTML/JS interface)
+
+Drags and drops node types (from a toolbox)
+
+Connects nodes visually using wires
+
+Configures node settings via side panel
+
+Clicks Execute, which:
+
+Serializes the workflow as JSON
+
+Sends it via POST to the Flask backend
+
+2. Backend Flow
+Flask receives the workflow JSON
+
+Validates the structure (optional)
+
+Passes JSON to execution_engine.py
+
+The engine:
+
+Topologically sorts nodes using connection data
+
+Dynamically loads each Python file from /control_nodes
+
+Calls the node's run(config, context) function
+
+Passes results into a shared context dictionary
+
+Returns output or logs to the frontend
+
+📄 JSON Workflow Format
+Each workflow is saved as a JSON file in /workflows/, allowing reusability, versioning, and easy export.
+
+Example:
+json
+Copy
+Edit
+{
+  "nodes": [
+    {
+      "id": "http1",
+      "type": "http_request",
+      "config": {
+        "url": "https://api.example.com/data",
+        "method": "GET"
+      }
+    },
+    {
+      "id": "file1",
+      "type": "write_file",
+      "config": {
+        "path": "output.txt",
+        "content": "{{context.http1.response}}"
+      }
+    }
+  ],
+  "connections": [
+    { "source": "http1", "target": "file1" }
+  ],
+  "variables": {}
+}
+⚙️ Execution Engine Core Logic
+The execution engine processes workflows like this:
+
+Receive JSON workflow
+
+Validate structure
+
+Build a dependency graph
+
+Topologically sort the graph (to respect execution order)
+
+For each node:
+
+Dynamically import corresponding Python file (e.g., http_request.py)
+
+Call run(config, context)
+
+Store result in context under the node ID
+
+Return final results or logs
+
+📦 Node Definition Pattern
+Each Python file under /control_nodes represents a single node.
+
+Example:
+python
+Copy
+Edit
+# control_nodes/http_request.py
+
+import requests
+
+def run(config, context):
+    url = config['url']
+    method = config.get('method', 'GET')
+    response = requests.request(method, url)
+    return {'response': response.text}
+🌐 API Endpoints (Flask)
+Method	Route	Purpose
+POST	/run-workflow	Accepts workflow JSON, runs it
+GET	/workflows	Lists available JSON workflows
+POST	/save-workflow	Saves workflow JSON
+POST	/auth/register	Registers a user (optional)
+POST	/auth/login	Authenticates a user (optional)
+
+🎨 Frontend Features (HTML/JS/Bootstrap)
+Feature	Description
+Node Palette	Sidebar with draggable node types
+Canvas Area	Drop, move, and connect nodes
+Node Configuration Panel	Right panel to set node-specific settings
+Execute Button	Triggers the backend with the current flow
+Save Workflow Button	Saves the workflow as a .json file
+Load Workflow Button	Loads a previously saved workflow into canvas
+User Auth Pages (Optional)	Bootstrap forms for login/register
+
+⚙️ Development Phases (Refreshed)
+Phase	Milestone Description
+1	Initialize Flask server & endpoints
+2	Build basic HTML/CSS GUI
+3	Implement dynamic Control Node system
+4	Develop Execution Engine
+5	Link frontend to Flask
+6	Add save/load workflow JSON
+7	Add error handling/logging
+8	Optional: Add user authentication system
+9	Optional: Add scheduler & triggers
+
+✅ Summary of Scalability
+Add a new node? Just create a new .py file in control_nodes/
+
+Want new frontend behavior? Update the HTML config sidebar and node list
+
+Want to modify logic? Just tweak execution_engine.py
+
+Need to scale? Run multiple Flask containers behind a load balancer
+
+✅ Goals Fulfilled
+Feature	Done?
+Flask-based backend	✅
+HTML/CSS/JS frontend	✅
+Bootstrap UI	✅
+JSON workflow format	✅
+Dynamic Python node logic	✅
+Visual node editor	✅
+Execution via context passing	✅
