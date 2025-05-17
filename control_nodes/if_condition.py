@@ -7,6 +7,7 @@ NODE_NAME = "If Condition"
 NODE_DESCRIPTION = "Branch workflow based on a condition"
 NODE_COLOR = "#9c27b0"
 NODE_ICON = "fa-code-branch"
+NODE_OUTPUTS = ["true", "false"]  # Define the two output paths
 
 # Configuration Schema
 CONFIG_SCHEMA = {
