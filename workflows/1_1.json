@@ -1,0 +1,25 @@
+{
+  "nodes": [
+    {
+      "id": "http_request_1747497219991",
+      "type": "http_request",
+      "config": {}
+    },
+    {
+      "id": "email_send_1747497224260",
+      "type": "email_send",
+      "config": {}
+    }
+  ],
+  "connections": [
+    {
+      "source": "jsPlumb_2_2",
+      "target": "jsPlumb_2_3"
+    },
+    {
+      "source": "jsPlumb_2_2",
+      "target": "jsPlumb_2_3"
+    }
+  ],
+  "variables": {}
+}

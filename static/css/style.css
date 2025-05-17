@@ -8,11 +8,13 @@
     --success-color: #4caf50;
     --error-color: #f44336;
     --warning-color: #ff9800;
+    --info-color: #2196f3;
     --node-handle-size: 10px;
     --node-width: 180px;
     --sidebar-width: 260px;
-    --config-panel-width: 320px;
+    --config-panel-width: 350px;
     --top-nav-height: 56px;
+    --debug-log-height: 400px;
 }
 
 body {
@@ -419,6 +421,160 @@ body {
 
 .json-null {
     color: #795548;
+}
+
+/* Debug Panel */
+.debug-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.debug-header {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.debug-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.debug-logs {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.debug-log-container {
+    padding: 10px;
+}
+
+.debug-log-entry {
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 4px solid transparent;
+}
+
+.debug-log-time {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 4px;
+}
+
+.log-info {
+    background-color: rgba(33, 150, 243, 0.1);
+    border-left-color: var(--info-color);
+}
+
+.log-success {
+    background-color: rgba(76, 175, 80, 0.1);
+    border-left-color: var(--success-color);
+}
+
+.log-warning {
+    background-color: rgba(255, 152, 0, 0.1);
+    border-left-color: var(--warning-color);
+}
+
+.log-error {
+    background-color: rgba(244, 67, 54, 0.1);
+    border-left-color: var(--error-color);
+}
+
+.debug-node-id {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.debug-message {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Error Node State */
+.workflow-node.node-error {
+    box-shadow: 0 0 0 2px var(--error-color);
+}
+
+.node-error-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: var(--error-color);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+/* Execution Progress Bar */
+.execution-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 5px 10px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.progress-inner {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Node Status Indicators */
+.node-status {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    right: 5px;
+    top: 5px;
+}
+
+.status-pending {
+    background-color: var(--text-light);
+}
+
+.status-running {
+    background-color: #2196f3;
+    animation: pulse 1.5s infinite;
+}
+
+.status-success {
+    background-color: var(--success-color);
+}
+
+.status-error {
+    background-color: var(--error-color);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
 }
 
 /* Responsive Adjustments */
