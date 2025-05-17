@@ -806,6 +806,143 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Debug panel utility functions
+    function clearNodeErrorStates() {
+        // Remove error indicators from all nodes
+        document.querySelectorAll('.workflow-node').forEach(node => {
+            node.classList.remove('node-error');
+            const errorBadge = node.querySelector('.node-error-badge');
+            if (errorBadge) {
+                errorBadge.remove();
+            }
+            
+            // Remove status indicators
+            const statusIndicator = node.querySelector('.node-status');
+            if (statusIndicator) {
+                statusIndicator.remove();
+            }
+        });
+    }
+    
+    function showExecutionProgress(percent) {
+        const progressBar = document.getElementById('execution-progress-bar');
+        if (!progressBar) return;
+        
+        const progressIndicator = progressBar.querySelector('.progress-bar');
+        if (progressIndicator) {
+            progressIndicator.style.width = `${percent}%`;
+            progressIndicator.setAttribute('aria-valuenow', percent);
+            progressIndicator.textContent = `${percent}%`;
+        }
+        
+        progressBar.style.display = 'block';
+    }
+    
+    function hideExecutionProgress() {
+        const progressBar = document.getElementById('execution-progress-bar');
+        if (progressBar) {
+            progressBar.style.display = 'none';
+        }
+    }
+    
+    function updateNodeStatuses(nodeStatuses) {
+        // Update visual status of each node
+        Object.entries(nodeStatuses).forEach(([nodeId, status]) => {
+            const nodeEl = document.getElementById(nodeId);
+            if (!nodeEl) return;
+            
+            // Remove any existing status indicators
+            nodeEl.querySelectorAll('.node-status').forEach(el => el.remove());
+            
+            // Add status indicator
+            const statusIndicator = document.createElement('div');
+            statusIndicator.className = `node-status status-${status}`;
+            nodeEl.appendChild(statusIndicator);
+            
+            // Add error badge if node failed
+            if (status === 'error') {
+                nodeEl.classList.add('node-error');
+                
+                const errorBadge = document.createElement('div');
+                errorBadge.className = 'node-error-badge';
+                errorBadge.innerHTML = '<i class="fas fa-exclamation"></i>';
+                errorBadge.title = 'View error details in debug panel';
+                
+                // Add click handler to show debug tab
+                errorBadge.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Don't select the node
+                    document.getElementById('debug-tab').click();
+                });
+                
+                nodeEl.appendChild(errorBadge);
+            }
+        });
+    }
+    
+    function clearDebugLogs() {
+        const logContainer = document.getElementById('debug-log-container');
+        if (logContainer) {
+            logContainer.innerHTML = '';
+        }
+        
+        // Show empty message
+        const emptyMsg = document.querySelector('.debug-log-empty');
+        if (emptyMsg) {
+            emptyMsg.style.display = 'block';
+        }
+    }
+    
+    function populateDebugLogs(logs) {
+        const logContainer = document.getElementById('debug-log-container');
+        if (!logContainer) return;
+        
+        // Hide empty message
+        const emptyMsg = document.querySelector('.debug-log-empty');
+        if (emptyMsg) {
+            emptyMsg.style.display = 'none';
+        }
+        
+        // Clear existing logs
+        logContainer.innerHTML = '';
+        
+        // Add each log entry
+        logs.forEach(log => {
+            const logEntry = document.createElement('div');
+            logEntry.className = `debug-log-entry log-${log.level}`;
+            
+            const logTime = document.createElement('div');
+            logTime.className = 'debug-log-time';
+            
+            // Format timestamp
+            const timestamp = new Date(log.timestamp);
+            logTime.textContent = timestamp.toLocaleTimeString();
+            
+            const logContent = document.createElement('div');
+            logContent.className = 'debug-log-content';
+            
+            // Add node ID if present
+            if (log.node_id) {
+                const nodeSpan = document.createElement('span');
+                nodeSpan.className = 'debug-node-id';
+                nodeSpan.textContent = log.node_id;
+                logContent.appendChild(nodeSpan);
+            }
+            
+            // Add message
+            const messageSpan = document.createElement('span');
+            messageSpan.className = 'debug-message';
+            messageSpan.textContent = log.message;
+            logContent.appendChild(messageSpan);
+            
+            logEntry.appendChild(logTime);
+            logEntry.appendChild(logContent);
+            logContainer.appendChild(logEntry);
+        });
+        
+        // Scroll to bottom
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
     // Display workflow execution results
     function displayWorkflowResults(results) {
         const resultsContainer = document.getElementById('execution-results');

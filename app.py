@@ -121,6 +121,12 @@ def workflow_editor():
 def run_workflow():
     data = request.json
     
+    # Add base URL for webhook nodes
+    if 'BASE_URL' not in os.environ:
+        # Get the request base URL for webhook integration
+        base_url = request.url_root.rstrip('/')
+        os.environ['BASE_URL'] = base_url
+    
     # Validate the workflow structure
     is_valid, errors = validate_workflow(data)
     
@@ -132,16 +138,23 @@ def run_workflow():
     
     # Execute the workflow
     try:
+        # Execute with enhanced debug features
         results = execute_workflow(data)
+        
+        # Return success with full results including debug info
         return jsonify({
             'success': True,
             'results': results
         })
     except Exception as e:
         app.logger.error(f"Error executing workflow: {str(e)}")
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        # Return error details
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'traceback': traceback.format_exc()
         }), 500
 
 @app.route('/api/save-workflow', methods=['POST'])
