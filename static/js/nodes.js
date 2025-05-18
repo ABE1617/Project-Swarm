@@ -96,7 +96,8 @@ const nodeTypes = {
                 description: "JavaScript-like condition for filtering (e.g., 'item.age > 18')",
                 showIf: {
                     operation: 'filter'
-                }
+                },
+                required: true
             },
             map_expression: {
                 type: 'string',
@@ -104,7 +105,8 @@ const nodeTypes = {
                 description: "Expression for mapping (e.g., '{name: item.name, age: item.age}')",
                 showIf: {
                     operation: 'map'
-                }
+                },
+                required: true
             },
             sort_key: {
                 type: 'string',
@@ -112,7 +114,8 @@ const nodeTypes = {
                 description: "Key to sort by (e.g., 'name')",
                 showIf: {
                     operation: 'sort'
-                }
+                },
+                required: true
             },
             select_keys: {
                 type: 'array',
@@ -120,7 +123,8 @@ const nodeTypes = {
                 description: 'List of keys to select from objects',
                 showIf: {
                     operation: 'select'
-                }
+                },
+                required: true
             }
         }
     },
@@ -179,6 +183,44 @@ const nodeTypes = {
                 default: false
             }
         }
+    },
+    manual_trigger: {
+        name: 'Manual Trigger',
+        description: 'Start workflow execution manually',
+        color: '#4a69bd',
+        icon: 'fa-play-circle',
+        inputs: [],
+        outputs: ['trigger'],
+        configSchema: {
+            name: {
+                type: 'string',
+                title: 'Trigger Name',
+                description: 'Name of this trigger for easier identification',
+                default: 'Manual Trigger'
+            }
+        }
+    },
+    read_file: {
+        name: 'Read File',
+        description: 'Read data from a file on the server',
+        color: '#2196f3',
+        icon: 'fa-file-alt',
+        inputs: ['trigger'],
+        outputs: ['result'],
+        configSchema: {
+            path: {
+                type: 'string',
+                title: 'File Path',
+                description: 'Path to read the file from (relative to workspace)',
+                required: true
+            },
+            encoding: {
+                type: 'string',
+                title: 'Encoding',
+                description: 'File encoding',
+                default: 'utf8'
+            }
+        }
     }
 };
 
@@ -191,11 +233,21 @@ function createFormField(key, schema) {
     label.className = 'form-label';
     label.setAttribute('for', key);
     label.textContent = schema.title || key;
+    
+    // Add required indicator if the field is required
+    if (schema.required) {
+        const requiredIndicator = document.createElement('span');
+        requiredIndicator.className = 'required-indicator text-danger ms-1';
+        requiredIndicator.textContent = '*';
+        requiredIndicator.title = 'Required field';
+        label.appendChild(requiredIndicator);
+    }
+    
     formGroup.appendChild(label);
     
     if (schema.description) {
         const description = document.createElement('div');
-        description.className = 'form-description';
+        description.className = 'form-description small text-muted';
         description.textContent = schema.description;
         formGroup.appendChild(description);
     }
@@ -216,6 +268,10 @@ function createFormField(key, schema) {
         
         if (schema.default) {
             input.value = schema.default;
+        }
+        
+        if (schema.required) {
+            input.required = true;
         }
     } else if (schema.type === 'boolean') {
         // Checkbox for boolean types
@@ -248,41 +304,147 @@ function createFormField(key, schema) {
         // Textarea for JSON objects
         input = document.createElement('textarea');
         input.className = 'form-control';
-        input.rows = 4;
-        input.placeholder = '{\n  "key": "value"\n}';
+        input.setAttribute('rows', '4');
+        input.setAttribute('placeholder', '{ "key": "value" }');
+        
+        if (schema.required) {
+            input.required = true;
+        }
     } else if (schema.type === 'array') {
         // Textarea for arrays
         input = document.createElement('textarea');
         input.className = 'form-control';
-        input.rows = 4;
-        input.placeholder = '[\n  "item1",\n  "item2"\n]';
+        input.setAttribute('rows', '3');
+        input.setAttribute('placeholder', '["item1", "item2", "item3"]');
+        
+        if (schema.required) {
+            input.required = true;
+        }
     } else if (schema.type === 'code') {
-        // Textarea for code
+        // Code editor
         input = document.createElement('textarea');
         input.className = 'form-control code-editor';
-        input.rows = 8;
-        input.placeholder = '// Write your code here';
+        input.setAttribute('rows', '8');
+        input.setAttribute('placeholder', '// Write code here');
+        input.setAttribute('data-language', schema.language || 'javascript');
+        
+        if (schema.required) {
+            input.required = true;
+        }
     } else {
         // Default to text input
         input = document.createElement('input');
-        input.className = 'form-control';
         input.type = 'text';
+        input.className = 'form-control';
         
-        if (schema.default) {
-            input.value = schema.default;
+        if (schema.placeholder) {
+            input.setAttribute('placeholder', schema.placeholder);
+        }
+        
+        if (schema.required) {
+            input.required = true;
         }
     }
     
     input.id = key;
     input.name = key;
     
+    // Add validation event listener
     if (schema.required) {
-        input.required = true;
+        input.addEventListener('blur', function() {
+            validateField(input, schema);
+        });
+        
+        input.addEventListener('input', function() {
+            // Clear validation errors as user types
+            input.classList.remove('is-invalid');
+            const errorFeedback = formGroup.querySelector('.invalid-feedback');
+            if (errorFeedback) {
+                errorFeedback.remove();
+            }
+        });
     }
     
     formGroup.appendChild(input);
+    
     return formGroup;
 }
+
+// Field validation function
+function validateField(input, schema) {
+    const formGroup = input.closest('.form-group');
+    let isValid = true;
+    let errorMessage = '';
+    
+    // Clear previous validation
+    input.classList.remove('is-invalid', 'is-valid');
+    const existingFeedback = formGroup.querySelector('.invalid-feedback');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+    
+    // Check if field is required and empty
+    if (schema.required) {
+        if (input.type === 'checkbox') {
+            // For checkboxes, being unchecked might be valid
+            if (schema.requiredValue === true && !input.checked) {
+                isValid = false;
+                errorMessage = 'This field is required';
+            }
+        } else {
+            // For other input types
+            if (!input.value.trim()) {
+                isValid = false;
+                errorMessage = 'This field is required';
+            }
+        }
+    }
+    
+    // Additional validations could be added here based on schema type
+    
+    // Apply validation UI
+    if (!isValid) {
+        input.classList.add('is-invalid');
+        
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        feedback.textContent = errorMessage;
+        formGroup.appendChild(feedback);
+    } else if (schema.required) {
+        input.classList.add('is-valid');
+    }
+    
+    return isValid;
+}
+
+// Validate entire node config form
+function validateNodeConfigForm(form, nodeType) {
+    const nodeTypeDef = nodeTypes[nodeType];
+    if (!nodeTypeDef || !nodeTypeDef.configSchema) {
+        return true; // No schema to validate against
+    }
+    
+    const configSchema = nodeTypeDef.configSchema;
+    let isValid = true;
+    
+    // Check each required field
+    for (const key in configSchema) {
+        const fieldSchema = configSchema[key];
+        if (fieldSchema.required) {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (input) {
+                if (!validateField(input, fieldSchema)) {
+                    isValid = false;
+                }
+            }
+        }
+    }
+    
+    return isValid;
+}
+
+// Export the validate function for use in workflow-editor.js
+window.validateNodeConfigForm = validateNodeConfigForm;
 
 // Load node types from server or use the static definitions
 function fetchNodeTypes() {

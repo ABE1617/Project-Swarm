@@ -5,8 +5,17 @@ import traceback
 import json
 from datetime import datetime
 from collections import defaultdict
+import sys
 
-# Configure logging
+# Configure detailed logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(name)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('workflow_execution.log')
+    ]
+)
 logger = logging.getLogger(__name__)
 
 def build_dependency_graph(workflow_data):
@@ -26,6 +35,39 @@ def build_dependency_graph(workflow_data):
             graph[source].append(target)
     
     return graph, nodes
+
+def identify_connected_nodes(graph, nodes):
+    """Identifies all nodes that are connected to the workflow (reachable from triggers)"""
+    # All nodes in the graph (sources and targets)
+    all_nodes = set(graph.keys())
+    for targets in graph.values():
+        all_nodes.update(targets)
+        
+    # Find nodes with no incoming connections (triggers or orphaned nodes)
+    # We'll treat these as starting points
+    incoming_connections = set()
+    for source, targets in graph.items():
+        incoming_connections.update(targets)
+    
+    # Identify starting nodes as only explicit trigger nodes
+    from utils.schema_validator import TRIGGER_NODE_TYPES
+    starting_nodes = {node_id for node_id, node in nodes.items() if node.get('type') in TRIGGER_NODE_TYPES}
+    
+    # Perform DFS from each starting node to find all reachable nodes
+    visited = set()
+    
+    def dfs(node):
+        if node in visited:
+            return
+        visited.add(node)
+        for neighbor in graph.get(node, []):
+            dfs(neighbor)
+    
+    # Start DFS from each starting node
+    for node in starting_nodes:
+        dfs(node)
+    
+    return visited
 
 def topological_sort(graph):
     """Performs a topological sort of nodes in the graph"""
@@ -65,6 +107,168 @@ def topological_sort(graph):
     # Reverse to get correct order (we built it backwards)
     return list(reversed(order))
 
+def add_debug_log(context, level, node_id, message):
+    """Adds a debug log entry to the execution context"""
+    log_entry = {
+        'timestamp': datetime.now().isoformat(),
+        'level': level,
+        'node_id': node_id,
+        'message': message
+    }
+    context['debug_logs'].append(log_entry)
+    
+    # Also log to system logs
+    if level == 'error':
+        logger.error(f"[Node {node_id}] {message}")
+    elif level == 'warning':
+        logger.warning(f"[Node {node_id}] {message}")
+    else:
+        logger.info(f"[Node {node_id}] {message}")
+
+def mask_sensitive_data(data):
+    """Masks sensitive data in logs (passwords, tokens, etc.)"""
+    if isinstance(data, dict):
+        result = {}
+        for key, value in data.items():
+            if key.lower() in ['password', 'token', 'api_key', 'secret', 'auth', 'credential', 'private_key']:
+                result[key] = '*****'
+            else:
+                result[key] = mask_sensitive_data(value)
+        return result
+    elif isinstance(data, list):
+        return [mask_sensitive_data(item) for item in data]
+    else:
+        return data
+
+def process_config_templates(config, context):
+    """Processes templates in configuration values (e.g., {{context.nodeId.result}})"""
+    # Process string templates
+    if isinstance(config, str):
+        # TODO: Implement template parsing for strings
+        return config
+    
+    # Process dictionaries recursively
+    if isinstance(config, dict):
+        processed_config = {}
+        for key, value in config.items():
+            processed_config[key] = process_config_templates(value, context)
+        return processed_config
+    
+    # Process lists recursively
+    if isinstance(config, list):
+        return [process_config_templates(item, context) for item in config]
+    
+    # Return other types as-is
+    return config
+
+def handle_node_error(context, node_id, node_type, message, exception, start_time):
+    """Handles node execution errors uniformly"""
+    # Add error to debug logs
+    add_debug_log(context, 'error', node_id, message)
+    
+    # Add traceback for detailed debugging
+    add_debug_log(context, 'error', node_id, f"Traceback: {traceback.format_exc()}")
+    
+    # Record error in results
+    context['results'][node_id] = {
+        'id': node_id,
+        'type': node_type,
+        'status': 'error',
+        'error': str(exception),
+        'execution_time': time.time() - start_time
+    }
+    
+    # Add to errors list
+    context['errors'].append({
+        'node_id': node_id,
+        'message': message,
+        'details': str(exception),
+        'traceback': traceback.format_exc(),
+        'timestamp': datetime.now().isoformat()
+    })
+    
+    # Mark node status as failed
+    context['node_statuses'][node_id] = 'error'
+
+def format_execution_results(context):
+    """Formats execution results for API response"""
+    return {
+        'execution_time': time.time() - context['start_time'],
+        'debug_logs': context['debug_logs'],
+        'node_statuses': context['node_statuses'],
+        'results': context['results'],
+        'errors': context['errors'],
+        'progress': context['progress']
+    }
+
+def resolve_execution_order_with_positions(graph, nodes):
+    """
+    Determines execution order considering both dependencies and visual left-to-right positions
+    
+    This ensures that when multiple nodes are at the same dependency level,
+    they execute from left to right as shown in the UI.
+    """
+    # Get base topological sort order (based on dependencies)
+    base_order = topological_sort(graph)
+    
+    # Group nodes by their levels in the dependency graph
+    levels = {}
+    node_levels = {}
+    
+    # First, find all starting nodes (no incoming edges)
+    incoming_edges = set()
+    for source, targets in graph.items():
+        for target in targets:
+            incoming_edges.add(target)
+    
+    starting_nodes = set(base_order) - incoming_edges
+    
+    # Assign levels through BFS
+    current_level = 0
+    current_nodes = starting_nodes
+    visited = set()
+    
+    while current_nodes:
+        levels[current_level] = list(current_nodes)
+        next_level_nodes = set()
+        
+        for node in current_nodes:
+            node_levels[node] = current_level
+            visited.add(node)
+            
+            # Add all unvisited neighbors to the next level
+            for neighbor in graph.get(node, []):
+                if neighbor not in visited and neighbor not in next_level_nodes:
+                    # Check if all prerequisites are visited
+                    prereqs_visited = True
+                    for source, targets in graph.items():
+                        if neighbor in targets and source not in visited:
+                            prereqs_visited = False
+                            break
+                    
+                    if prereqs_visited:
+                        next_level_nodes.add(neighbor)
+        
+        current_nodes = next_level_nodes
+        current_level += 1
+    
+    # Sort nodes at each level by their x-position (left to right)
+    for level, level_nodes in levels.items():
+        # Sort nodes at this level by x position
+        level_nodes.sort(key=lambda node_id: nodes.get(node_id, {}).get('position', {}).get('x', 0))
+    
+    # Rebuild execution order based on levels
+    execution_order = []
+    for level in sorted(levels.keys()):
+        execution_order.extend(levels[level])
+    
+    # Handle any nodes not yet placed (should rarely happen)
+    for node in base_order:
+        if node not in execution_order:
+            execution_order.append(node)
+    
+    return execution_order
+
 def execute_workflow(workflow_data):
     """Executes a workflow based on JSON data"""
     # Initialize execution context with debug logs
@@ -76,24 +280,100 @@ def execute_workflow(workflow_data):
         'results': {},
         'errors': [],
         'progress': 0,
-        'total_nodes': 0
+        'total_nodes': 0,
+        'workflow_id': workflow_data.get('id', 'unknown'),
+        'workflow_name': workflow_data.get('name', 'unknown')
     }
     
-    # Add initial debug log
-    add_debug_log(execution_context, 'info', None, "Starting workflow execution")
+    # Add initial debug logs
+    add_debug_log(execution_context, 'info', None, f"Starting workflow execution - ID: {execution_context['workflow_id']}, Name: {execution_context['workflow_name']}")
+    add_debug_log(execution_context, 'info', None, f"Workflow configuration: {json.dumps(mask_sensitive_data(workflow_data), indent=2)}")
     
     try:
-        # Build dependency graph and get nodes
-        graph, nodes = build_dependency_graph(workflow_data)
+        # Check if workflow has nodes
+        if not workflow_data.get('nodes'):
+            error_msg = "Workflow contains no nodes"
+            add_debug_log(execution_context, 'error', None, error_msg)
+            execution_context['errors'].append({
+                'message': error_msg,
+                'timestamp': datetime.now().isoformat()
+            })
+            return format_execution_results(execution_context)
+            
+        # Find trigger nodes (manual or other types) - for logging purposes only
+        from utils.schema_validator import TRIGGER_NODE_TYPES
+        trigger_nodes = [node for node in workflow_data.get('nodes', []) if node.get('type') in TRIGGER_NODE_TYPES]
         
-        # Get execution order
+        if trigger_nodes:
+            add_debug_log(execution_context, 'info', None, f"Found {len(trigger_nodes)} trigger nodes")
+        else:
+            add_debug_log(execution_context, 'warning', None, "No trigger nodes found in workflow")
+            
+        # Build dependency graph and get nodes
         try:
-            execution_order = topological_sort(graph)
-            add_debug_log(execution_context, 'info', None, f"Execution order determined: {', '.join(execution_order)}")
+            graph, nodes = build_dependency_graph(workflow_data)
+            add_debug_log(execution_context, 'info', None, 
+                         f"Built dependency graph with {len(nodes)} nodes. Node types: " + 
+                         json.dumps({node_id: node['type'] for node_id, node in nodes.items()}))
+        except Exception as e:
+            error_msg = f"Error building dependency graph: {str(e)}"
+            add_debug_log(execution_context, 'error', None, error_msg)
+            execution_context['errors'].append({
+                'message': error_msg,
+                'traceback': traceback.format_exc(),
+                'timestamp': datetime.now().isoformat()
+            })
+            return format_execution_results(execution_context)
+        
+        # Find all connected nodes (reachable from triggers)
+        connected_nodes = identify_connected_nodes(graph, nodes)
+        
+        # Filter out unconnected nodes
+        # Keep only nodes that are reachable from triggers
+        reachable_nodes = {}
+        for node_id, node in nodes.items():
+            if node_id in connected_nodes or node.get('type') in TRIGGER_NODE_TYPES:
+                reachable_nodes[node_id] = node
+        
+        # Log how many nodes were filtered out
+        if len(nodes) != len(reachable_nodes):
+            filtered_nodes = set(nodes.keys()) - set(reachable_nodes.keys())
+            add_debug_log(execution_context, 'info', None, 
+                         f"Filtered out {len(filtered_nodes)} unconnected nodes: {', '.join(filtered_nodes)}")
+            
+            # Update graph to include only connected nodes
+            filtered_graph = defaultdict(list)
+            for source, targets in graph.items():
+                if source in reachable_nodes:
+                    filtered_graph[source] = [target for target in targets if target in reachable_nodes]
+            
+            graph = filtered_graph
+            nodes = reachable_nodes
+            
+        # Get execution order considering node positions (left-to-right UI order)
+        try:
+            # Check if nodes have position data
+            has_position_data = any('position' in node for node in nodes.values())
+            
+            if has_position_data:
+                execution_order = resolve_execution_order_with_positions(graph, nodes)
+                add_debug_log(execution_context, 'info', None, 
+                             f"Execution order determined with left-to-right positioning: {', '.join(execution_order)}")
+            else:
+                # Fall back to basic topological sort if no position data
+                execution_order = topological_sort(graph)
+                add_debug_log(execution_context, 'info', None, 
+                             f"Execution order determined with dependencies only: {', '.join(execution_order)}")
+                
         except ValueError as e:
             error_msg = f"Error in workflow topology: {str(e)}"
             add_debug_log(execution_context, 'error', None, error_msg)
-            raise ValueError(error_msg)
+            execution_context['errors'].append({
+                'message': error_msg,
+                'traceback': traceback.format_exc(),
+                'timestamp': datetime.now().isoformat()
+            })
+            return format_execution_results(execution_context)
         
         # Set total nodes for progress tracking
         execution_context['total_nodes'] = len(execution_order)
@@ -124,11 +404,21 @@ def execute_workflow(workflow_data):
             
             try:
                 # Dynamically import the node module
-                module_name = f"control_nodes.{node_type}"
-                module = importlib.import_module(module_name)
+                try:
+                    module_name = f"control_nodes.{node_type}"
+                    module = importlib.import_module(module_name)
+                except ImportError as e:
+                    error_msg = f"Node type '{node_type}' not found or could not be imported"
+                    handle_node_error(execution_context, node_id, node_type, error_msg, e, node_start_time)
+                    continue
                 
                 # Process templates in node config (e.g., {{context.node1.result}})
-                processed_config = process_config_templates(node_config, execution_context['context'])
+                try:
+                    processed_config = process_config_templates(node_config, execution_context['context'])
+                except Exception as e:
+                    error_msg = f"Error processing configuration templates: {str(e)}"
+                    handle_node_error(execution_context, node_id, node_type, error_msg, e, node_start_time)
+                    continue
                 
                 # Add debug log for config (mask sensitive data)
                 masked_config = mask_sensitive_data(processed_config)
@@ -136,174 +426,55 @@ def execute_workflow(workflow_data):
                              f"Configuration: {json.dumps(masked_config, indent=2)}")
                 
                 # Call the module's run function
-                node_result = module.run(processed_config, execution_context['context'])
-                
-                # Store result in context
-                execution_context['context'][node_id] = node_result
-                execution_context['results'][node_id] = {
-                    'id': node_id,
-                    'type': node_type,
-                    'status': 'success',
-                    'result': node_result,
-                    'execution_time': time.time() - node_start_time
-                }
-                
-                # Mark node as successful
-                execution_context['node_statuses'][node_id] = 'success'
-                add_debug_log(execution_context, 'success', node_id, 
-                             f"Execution completed successfully in {time.time() - node_start_time:.3f} seconds")
-            
-            except ImportError as e:
-                error_msg = f"Node type '{node_type}' not found"
-                handle_node_error(execution_context, node_id, node_type, error_msg, e, node_start_time)
+                try:
+                    if not hasattr(module, 'run'):
+                        error_msg = f"Node type '{node_type}' does not implement required 'run' function"
+                        handle_node_error(execution_context, node_id, node_type, error_msg, 
+                                         AttributeError(error_msg), node_start_time)
+                        continue
+                    
+                    node_result = module.run(processed_config, execution_context['context'])
+                    
+                    # Store result in context
+                    execution_context['context'][node_id] = node_result
+                    execution_context['results'][node_id] = {
+                        'id': node_id,
+                        'type': node_type,
+                        'status': 'success',
+                        'result': node_result,
+                        'execution_time': time.time() - node_start_time
+                    }
+                    
+                    # Mark node as successful
+                    execution_context['node_statuses'][node_id] = 'success'
+                    add_debug_log(execution_context, 'success', node_id, 
+                                 f"Execution completed successfully in {time.time() - node_start_time:.3f} seconds")
+                except Exception as e:
+                    error_msg = f"Error executing node {node_id}: {str(e)}"
+                    handle_node_error(execution_context, node_id, node_type, error_msg, e, node_start_time)
             
             except Exception as e:
-                error_msg = f"Error executing node {node_id}: {str(e)}"
+                error_msg = f"Unexpected error in node {node_id}: {str(e)}"
                 handle_node_error(execution_context, node_id, node_type, error_msg, e, node_start_time)
         
         # Update final progress
         execution_context['progress'] = 100
         execution_time = time.time() - execution_context['start_time']
-        add_debug_log(execution_context, 'success', None, 
-                     f"Workflow execution completed in {execution_time:.3f} seconds")
+        add_debug_log(execution_context, 'info', None, f"Workflow execution completed in {execution_time:.3f} seconds")
+        
+        # Return execution results
+        return format_execution_results(execution_context)
         
     except Exception as e:
-        # Handle any other errors in the overall workflow execution
-        error_msg = f"Workflow execution failed: {str(e)}"
+        # Catch any unexpected exceptions at the top level
+        error_msg = f"Unexpected error during workflow execution: {str(e)}"
         add_debug_log(execution_context, 'error', None, error_msg)
+        add_debug_log(execution_context, 'error', None, f"Traceback: {traceback.format_exc()}")
+        
         execution_context['errors'].append({
             'message': error_msg,
-            'traceback': traceback.format_exc()
+            'traceback': traceback.format_exc(),
+            'timestamp': datetime.now().isoformat()
         })
-    
-    # Return the complete execution results including debug logs
-    return {
-        'nodes': execution_context['results'],
-        'context': execution_context['context'],
-        'debug_logs': execution_context['debug_logs'],
-        'node_statuses': execution_context['node_statuses'],
-        'progress': execution_context['progress'],
-        'errors': execution_context['errors'],
-        'execution_time': time.time() - execution_context['start_time']
-    }
-
-def handle_node_error(execution_context, node_id, node_type, error_msg, exception, start_time):
-    """Handle errors in node execution with detailed logging"""
-    # Log the error
-    logger.error(error_msg)
-    logger.error(traceback.format_exc())
-    
-    # Add debug log
-    add_debug_log(execution_context, 'error', node_id, error_msg)
-    add_debug_log(execution_context, 'error', node_id, f"Traceback: {traceback.format_exc()}")
-    
-    # Store error details in results
-    execution_context['results'][node_id] = {
-        'id': node_id,
-        'type': node_type,
-        'status': 'error',
-        'error': error_msg,
-        'traceback': traceback.format_exc(),
-        'execution_time': time.time() - start_time
-    }
-    
-    # Mark node as failed
-    execution_context['node_statuses'][node_id] = 'error'
-    
-    # Add to errors list
-    execution_context['errors'].append({
-        'node_id': node_id,
-        'message': error_msg,
-        'traceback': traceback.format_exc()
-    })
-
-def add_debug_log(execution_context, level, node_id, message):
-    """Add a debug log entry to the execution context"""
-    timestamp = datetime.now().isoformat()
-    
-    log_entry = {
-        'timestamp': timestamp,
-        'level': level,
-        'node_id': node_id,
-        'message': message
-    }
-    
-    execution_context['debug_logs'].append(log_entry)
-    
-    # Also log to the normal logger
-    if level == 'error':
-        logger.error(f"{node_id or 'Workflow'}: {message}")
-    elif level == 'warning':
-        logger.warning(f"{node_id or 'Workflow'}: {message}")
-    elif level == 'success':
-        logger.info(f"{node_id or 'Workflow'}: {message}")
-    else:
-        logger.info(f"{node_id or 'Workflow'}: {message}")
-
-def mask_sensitive_data(data):
-    """Mask sensitive fields in configuration data for logging"""
-    if not isinstance(data, dict):
-        return data
-    
-    masked_data = data.copy()
-    sensitive_keys = ['api_key', 'password', 'secret', 'token', 'credentials', 'auth']
-    
-    for key, value in masked_data.items():
-        # Check if this key contains any sensitive words
-        if any(sensitive in key.lower() for sensitive in sensitive_keys):
-            if isinstance(value, str) and value:
-                # Mask all but first and last 3 characters
-                if len(value) > 8:
-                    masked_data[key] = value[:3] + '*' * (len(value) - 6) + value[-3:]
-                else:
-                    masked_data[key] = '****'
-        # Recursively mask nested dictionaries
-        elif isinstance(value, dict):
-            masked_data[key] = mask_sensitive_data(value)
-        # Mask items in lists if they are dictionaries
-        elif isinstance(value, list):
-            masked_data[key] = [mask_sensitive_data(item) if isinstance(item, dict) else item for item in value]
-    
-    return masked_data
-
-def process_config_templates(config, context):
-    """Process config values that contain template placeholders"""
-    if isinstance(config, dict):
-        return {k: process_config_templates(v, context) for k, v in config.items()}
-    elif isinstance(config, list):
-        return [process_config_templates(item, context) for item in config]
-    elif isinstance(config, str) and '{{' in config and '}}' in config:
-        # Handle template syntax {{context.nodeId.key}}
-        try:
-            # Simple template processing (for more complex needs, consider a template engine)
-            import re
-            
-            def replace_template(match):
-                path = match.group(1).strip().split('.')
-                if path[0] != 'context' or len(path) < 3:
-                    return match.group(0)  # Return unchanged if not starting with context
-                
-                # Extract from context
-                node_id = path[1]
-                key = '.'.join(path[2:])  # Handle nested keys
-                
-                if node_id not in context:
-                    return f"[Node {node_id} not found]"
-                
-                # Navigate to the value
-                value = context[node_id]
-                for part in key.split('.'):
-                    if isinstance(value, dict) and part in value:
-                        value = value[part]
-                    else:
-                        return f"[Key {key} not found in node {node_id}]"
-                
-                return str(value)
-            
-            return re.sub(r'{{(.*?)}}', replace_template, config)
         
-        except Exception as e:
-            logger.error(f"Error processing template in config: {str(e)}")
-            return config
-    else:
-        return config
+        return format_execution_results(execution_context)

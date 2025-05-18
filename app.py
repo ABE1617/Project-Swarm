@@ -9,6 +9,7 @@ import importlib
 import os.path
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -121,42 +122,79 @@ def workflow_editor():
 def run_workflow():
     import traceback  # Import traceback module for error details
     
-    data = request.json
-    
-    # Add base URL for webhook nodes
-    if 'BASE_URL' not in os.environ:
-        # Get the request base URL for webhook integration
-        base_url = request.url_root.rstrip('/')
-        os.environ['BASE_URL'] = base_url
-    
-    # Validate the workflow structure
-    is_valid, errors = validate_workflow(data)
-    
-    if not is_valid:
-        return jsonify({
-            'success': False,
-            'errors': errors
-        }), 400
-    
-    # Execute the workflow
     try:
-        # Execute with enhanced debug features
+        data = request.json
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid request - missing JSON data',
+                'debug_logs': [{
+                    'timestamp': datetime.now().isoformat(),
+                    'level': 'error',
+                    'node_id': None,
+                    'message': 'Invalid request - missing JSON data'
+                }]
+            }), 400
+        
+        # Add base URL for webhook nodes
+        if 'BASE_URL' not in os.environ:
+            # Get the request base URL for webhook integration
+            base_url = request.url_root.rstrip('/')
+            os.environ['BASE_URL'] = base_url
+        
+        # Validate the workflow structure
+        is_valid, errors = validate_workflow(data)
+        
+        if not is_valid:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid workflow structure',
+                'errors': errors,
+                'debug_logs': [{
+                    'timestamp': datetime.now().isoformat(),
+                    'level': 'error',
+                    'node_id': None,
+                    'message': f'Validation error: {error}' 
+                } for error in errors]
+            }), 400
+        
+        # Execute the workflow
         results = execute_workflow(data)
         
-        # Return success with full results including debug info
+        # Check if there were execution errors
+        if results.get('errors') and len(results['errors']) > 0:
+            app.logger.warning(f"Workflow executed with {len(results['errors'])} errors")
+            
+            # Return partial success with results and errors
+            return jsonify({
+                'success': True,  # Still return success to allow the frontend to process the results
+                'has_errors': True,
+                'results': results
+            })
+        
+        # Return success with full results
         return jsonify({
             'success': True,
+            'has_errors': False,
             'results': results
         })
+    
     except Exception as e:
         app.logger.error(f"Error executing workflow: {str(e)}")
         app.logger.error(f"Traceback: {traceback.format_exc()}")
         
-        # Return error details
+        # Return error details with debug logs
         return jsonify({
             'success': False,
             'error': str(e),
-            'traceback': traceback.format_exc()
+            'traceback': traceback.format_exc(),
+            'debug_logs': [{
+                'timestamp': datetime.now().isoformat(),
+                'level': 'error',
+                'node_id': None,
+                'message': f'Server error: {str(e)}'
+            }]
         }), 500
 
 @app.route('/api/save-workflow', methods=['POST'])

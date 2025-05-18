@@ -4,12 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Swarm - Workflow Builder</title>
+    <!-- Modern fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/workflow-editor.css') }}">
 </head>
 <body class="workflow-editor">
+    <!-- Toast container for notifications -->
+    <div class="toast-container"></div>
+    
     <div class="top-nav">
         <div class="container-fluid">
             <div class="row align-items-center">
@@ -110,13 +117,13 @@
                             <div class="node-icon" style="background-color: #4caf50">
                                 <i class="fas fa-table"></i>
                             </div>
-                            <div class="node-label">Save to Google Sheets</div>
+                            <div class="node-label">Google Sheets</div>
                         </div>
                         <div class="node-item" data-node-type="save_to_drive">
                             <div class="node-icon" style="background-color: #4caf50">
                                 <i class="fab fa-google-drive"></i>
                             </div>
-                            <div class="node-label">Save to Google Drive</div>
+                            <div class="node-label">Google Drive</div>
                         </div>
                     </div>
                 </div>
@@ -137,13 +144,13 @@
                             <div class="node-icon" style="background-color: #2196f3">
                                 <i class="fas fa-table"></i>
                             </div>
-                            <div class="node-label">Read from Google Sheets</div>
+                            <div class="node-label">Read Sheets</div>
                         </div>
                         <div class="node-item" data-node-type="read_from_drive">
                             <div class="node-icon" style="background-color: #2196f3">
                                 <i class="fab fa-google-drive"></i>
                             </div>
-                            <div class="node-label">Read from Google Drive</div>
+                            <div class="node-label">Read Drive</div>
                         </div>
                     </div>
                 </div>
@@ -158,13 +165,13 @@
                             <div class="node-icon" style="background-color: #10a37f">
                                 <i class="fas fa-comment-dots"></i>
                             </div>
-                            <div class="node-label">ChatGPT API</div>
+                            <div class="node-label">ChatGPT</div>
                         </div>
                         <div class="node-item" data-node-type="deepseek_api">
                             <div class="node-icon" style="background-color: #7b68ee">
                                 <i class="fas fa-robot"></i>
                             </div>
-                            <div class="node-label">DeepSeek API</div>
+                            <div class="node-label">DeepSeek</div>
                         </div>
                     </div>
                 </div>
@@ -203,7 +210,7 @@
                             <div class="node-icon" style="background-color: #ff9800">
                                 <i class="fas fa-filter"></i>
                             </div>
-                            <div class="node-label">Data Transform</div>
+                            <div class="node-label">Transform</div>
                         </div>
                     </div>
                 </div>
@@ -224,13 +231,13 @@
                             <div class="node-icon" style="background-color: #f44336">
                                 <i class="fab fa-google"></i>
                             </div>
-                            <div class="node-label">Send Email (Gmail)</div>
+                            <div class="node-label">Gmail Send</div>
                         </div>
                         <div class="node-item" data-node-type="gmail_read">
                             <div class="node-icon" style="background-color: #f44336">
                                 <i class="fas fa-envelope-open"></i>
                             </div>
-                            <div class="node-label">Read Email (Gmail)</div>
+                            <div class="node-label">Gmail Read</div>
                         </div>
                     </div>
                 </div>
@@ -245,13 +252,13 @@
                             <div class="node-icon" style="background-color: #4a69bd">
                                 <i class="fas fa-play-circle"></i>
                             </div>
-                            <div class="node-label">Manual Trigger</div>
+                            <div class="node-label">Manual</div>
                         </div>
                         <div class="node-item" data-node-type="cron_trigger">
                             <div class="node-icon" style="background-color: #795548">
                                 <i class="fas fa-calendar-alt"></i>
                             </div>
-                            <div class="node-label">Cron Trigger</div>
+                            <div class="node-label">Cron</div>
                         </div>
                         <div class="node-item" data-node-type="delay">
                             <div class="node-icon" style="background-color: #795548">
@@ -272,7 +279,7 @@
                             <div class="node-icon" style="background-color: #f48c42">
                                 <i class="fas fa-code"></i>
                             </div>
-                            <div class="node-label">JavaScript Code</div>
+                            <div class="node-label">JavaScript</div>
                         </div>
                     </div>
                 </div>
@@ -284,11 +291,25 @@
                 <!-- Workflow nodes will be added here dynamically -->
                 <div class="canvas-guide">
                     <div class="guide-content">
-                        <i class="fas fa-arrow-left fa-2x mb-3"></i>
+                        <i class="fas fa-diagram-project fa-3x mb-3"></i>
                         <h4>Build Your Workflow</h4>
                         <p>Drag nodes from the sidebar and drop them here to start building your workflow.</p>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Zoom Controls -->
+            <div class="zoom-controls">
+                <button id="zoom-out" title="Zoom Out">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <div class="zoom-level">100%</div>
+                <button id="zoom-in" title="Zoom In">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button id="zoom-fit" title="Fit to View">
+                    <i class="fas fa-expand"></i>
+                </button>
             </div>
             
             <!-- Execution Progress Bar -->
@@ -367,8 +388,8 @@
                             </div>
                         </div>
                         <div class="debug-logs">
-                            <div class="debug-log-empty text-center p-3">
-                                <i class="fas fa-info-circle mb-2"></i>
+                            <div class="debug-log-empty">
+                                <i class="fas fa-info-circle"></i>
                                 <p>No debug logs available. Execute your workflow to see details.</p>
                             </div>
                             <div id="debug-log-container" class="debug-log-container">
