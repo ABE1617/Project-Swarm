@@ -1,5 +1,7 @@
 # Write File Node for Project Swarm
 import os
+import csv
+import json
 
 # Node Metadata
 NODE_TYPE = "write_file"
@@ -10,10 +12,24 @@ NODE_ICON = "fa-file"
 
 # Configuration Schema
 CONFIG_SCHEMA = {
-    "path": {
+    "file_format": {
         "type": "string",
-        "title": "File Path",
-        "description": "Path to write the file (relative to workspace)",
+        "title": "File Format",
+        "description": "Choose the file format to save (txt or csv)",
+        "enum": ["txt", "csv"],
+        "default": "txt",
+        "required": True
+    },
+    "file_name": {
+        "type": "string",
+        "title": "File Name",
+        "description": "Name of the output file (e.g. output.txt or output.csv)",
+        "required": True
+    },
+    "folder_path": {
+        "type": "string",
+        "title": "Folder Path",
+        "description": "Destination folder for the file. You can type or use the Choose Folder button.",
         "required": True
     },
     "content": {
@@ -39,48 +55,61 @@ CONFIG_SCHEMA = {
 
 def run(config, context):
     """
-    Writes data to a file
-    
-    Args:
-        config (dict): Configuration for the file write operation
-        context (dict): Shared context from previous nodes
-        
-    Returns:
-        dict: Result of the operation
+    Writes data to a file (txt or csv) in the specified folder with the specified name.
     """
-    path = config.get('path')
-    if not path:
-        raise ValueError("File path is required")
-    
+    file_format = config.get('file_format', 'txt')
+    file_name = config.get('file_name')
+    folder_path = config.get('folder_path')
     content = config.get('content', '')
     mode = config.get('mode', 'overwrite')
     create_dirs = config.get('create_directories', True)
-    
-    # Ensure the path is within the workspace (security measure)
-    abspath = os.path.abspath(path)
+
+    if not file_name:
+        raise ValueError("File name is required")
+    if not folder_path:
+        raise ValueError("Folder path is required")
+
+    # Ensure the folder path is within the workspace (security measure)
     workspace_dir = os.path.abspath('workspace')
-    
-    # Create a workspace directory if it doesn't exist
-    if not os.path.exists(workspace_dir):
-        os.makedirs(workspace_dir)
-    
-    # Make the path relative to workspace for security
-    rel_path = os.path.join(workspace_dir, os.path.basename(path))
-    
+    abs_folder = os.path.abspath(os.path.join(workspace_dir, folder_path))
+    if not abs_folder.startswith(workspace_dir):
+        raise ValueError("Invalid folder path")
+
     # Create directory if needed
-    if create_dirs:
-        directory = os.path.dirname(rel_path)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory)
-    
+    if create_dirs and not os.path.exists(abs_folder):
+        os.makedirs(abs_folder)
+
+    # Full file path
+    full_path = os.path.join(abs_folder, file_name)
+
     # Write to file
     write_mode = 'a' if mode == 'append' else 'w'
-    with open(rel_path, write_mode) as f:
-        f.write(content)
-    
-    # Return result
+    if file_format == 'csv':
+        # Try to parse content as JSON/array
+        try:
+            data = json.loads(content)
+        except Exception:
+            raise ValueError("Content must be a valid JSON array for CSV format")
+        if not isinstance(data, list):
+            raise ValueError("Content must be a list of rows for CSV format")
+        with open(full_path, write_mode, newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            for row in data:
+                if isinstance(row, dict):
+                    # Write header if first row
+                    if f.tell() == 0:
+                        writer.writerow(row.keys())
+                    writer.writerow(row.values())
+                elif isinstance(row, list):
+                    writer.writerow(row)
+                else:
+                    writer.writerow([row])
+    else:
+        with open(full_path, write_mode, encoding='utf-8') as f:
+            f.write(content)
+
     return {
-        'path': rel_path,
-        'size': os.path.getsize(rel_path),
+        'path': full_path,
+        'size': os.path.getsize(full_path),
         'success': True
     }

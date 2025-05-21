@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from collections import defaultdict
 import sys
+import os
 
 # Configure detailed logging
 logging.basicConfig(
@@ -299,7 +300,28 @@ def execute_workflow(workflow_data):
                 'timestamp': datetime.now().isoformat()
             })
             return format_execution_results(execution_context)
+        
+        # Validate node configurations
+        for node in workflow_data.get('nodes', []):
+            if 'id' not in node or 'type' not in node:
+                error_msg = f"Node {node} is missing required fields."
+                add_debug_log(execution_context, 'error', None, error_msg)
+                execution_context['errors'].append({
+                    'message': error_msg,
+                    'timestamp': datetime.now().isoformat()
+                })
+                return format_execution_results(execution_context)
             
+            # Additional validation for node configuration
+            if 'config' not in node or not isinstance(node['config'], dict):
+                error_msg = f"Node {node['id']} is missing a valid configuration."
+                add_debug_log(execution_context, 'error', node['id'], error_msg)
+                execution_context['errors'].append({
+                    'message': error_msg,
+                    'timestamp': datetime.now().isoformat()
+                })
+                return format_execution_results(execution_context)
+
         # Find trigger nodes (manual or other types) - for logging purposes only
         from utils.schema_validator import TRIGGER_NODE_TYPES
         trigger_nodes = [node for node in workflow_data.get('nodes', []) if node.get('type') in TRIGGER_NODE_TYPES]
@@ -308,7 +330,7 @@ def execute_workflow(workflow_data):
             add_debug_log(execution_context, 'info', None, f"Found {len(trigger_nodes)} trigger nodes")
         else:
             add_debug_log(execution_context, 'warning', None, "No trigger nodes found in workflow")
-            
+        
         # Build dependency graph and get nodes
         try:
             graph, nodes = build_dependency_graph(workflow_data)
@@ -478,3 +500,75 @@ def execute_workflow(workflow_data):
         })
         
         return format_execution_results(execution_context)
+
+def save_file(node_config, context):
+    """Saves data to a specified file format and location"""
+    # Get the selected format from the node configuration
+    file_format = node_config.get('file_format', 'txt')  # Default to txt
+    folder_path = node_config.get('folder_path', '')  # Folder path from user input
+
+    # Open a dialog to choose a folder if folder_path is empty
+    if not folder_path:
+        folder_path = open_folder_dialog()  # Implement this function based on your GUI framework
+
+    # Construct the full file path
+    file_name = f"output.{file_format}"
+    full_path = os.path.join(folder_path, file_name)
+
+    # Save data to the file
+    if file_format == 'csv':
+        save_as_csv(full_path, data)  # Implement this function to save data as CSV
+    else:
+        save_as_txt(full_path, data)  # Implement this function to save data as TXT
+
+class SaveFileNodeUI:
+    def __init__(self, node_config):
+        self.node_config = node_config
+        self.create_ui()
+
+    def create_ui(self):
+        """Creates the UI for the save file node configuration."""
+        
+        # Create a label and dropdown for file format selection
+        self.file_format_label = Label(text="Select File Format:")
+        self.file_format_dropdown = Dropdown(options=["txt", "csv"], selected=self.node_config.get('file_format', 'txt'))
+        
+        # Create a label and text box for folder path input
+        self.folder_path_label = Label(text="Folder Path:")
+        self.folder_path_input = TextBox(text=self.node_config.get('folder_path', ''))
+        
+        # Create a button to open folder selection dialog
+        self.folder_button = Button(text="Choose Folder", command=self.open_folder)
+        
+        # Layout the UI components
+        self.layout = [
+            self.file_format_label,
+            self.file_format_dropdown,
+            self.folder_path_label,
+            self.folder_path_input,
+            self.folder_button
+        ]
+        
+        # Add layout to the main window or parent container
+        self.add_to_main_window(self.layout)
+
+    def open_folder(self):
+        """Opens a folder selection dialog and updates the folder path input."""
+        selected_folder = self.open_folder_dialog()  # Implement this function based on your GUI framework
+        self.folder_path_input.set_text(selected_folder)  # Update the text box with the selected folder path
+
+    def save_node_configuration(self):
+        """Saves the configuration for the specified node."""
+        self.node_config['file_format'] = self.file_format_dropdown.get_selected()  # Get the selected value
+        self.node_config['folder_path'] = self.folder_path_input.get_text()  # Get the folder path from the input
+        
+        # Save the configuration to the workflow data
+        workflow_data['nodes'][self.node_config['id']] = self.node_config
+
+    def add_to_main_window(self, layout):
+        """Adds the layout to the main window (to be implemented based on your framework)."""
+        pass
+
+    def open_folder_dialog(self):
+        """Opens a folder dialog and returns the selected folder path (to be implemented)."""
+        pass

@@ -22,79 +22,6 @@ document.addEventListener('DOMContentLoaded', function() {
         Container: "workflow-canvas"
     });
     
-    // ZOOM FUNCTIONALITY
-    let currentZoom = 1;
-    const MIN_ZOOM = 0.1;
-    const MAX_ZOOM = 2;
-    const ZOOM_STEP = 0.1;
-    
-    const canvas = document.getElementById('workflow-canvas');
-    const zoomInBtn = document.getElementById('zoom-in');
-    const zoomOutBtn = document.getElementById('zoom-out');
-    const zoomFitBtn = document.getElementById('zoom-fit');
-    const zoomLevelDisplay = document.querySelector('.zoom-level');
-    
-    function updateZoom(newZoom) {
-        currentZoom = Math.min(Math.max(newZoom, MIN_ZOOM), MAX_ZOOM);
-        canvas.style.transform = `scale(${currentZoom})`;
-        zoomLevelDisplay.textContent = `${Math.round(currentZoom * 100)}%`;
-        jsPlumbInstance.setZoom(currentZoom);
-    }
-    
-    function zoomIn() {
-        updateZoom(currentZoom + ZOOM_STEP);
-    }
-    
-    function zoomOut() {
-        updateZoom(currentZoom - ZOOM_STEP);
-    }
-    
-    function zoomFit() {
-        // Get all nodes
-        const nodes = document.querySelectorAll('.workflow-node');
-        if (nodes.length === 0) {
-            updateZoom(1); // Reset to 100% if no nodes
-            return;
-        }
-        
-        // Calculate bounds
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        nodes.forEach(node => {
-            const rect = node.getBoundingClientRect();
-            minX = Math.min(minX, rect.left);
-            minY = Math.min(minY, rect.top);
-            maxX = Math.max(maxX, rect.right);
-            maxY = Math.max(maxY, rect.bottom);
-        });
-        
-        // Calculate required scale
-        const padding = 50; // Padding around nodes
-        const containerWidth = canvas.clientWidth;
-        const containerHeight = canvas.clientHeight;
-        const contentWidth = maxX - minX + (padding * 2);
-        const contentHeight = maxY - minY + (padding * 2);
-        
-        const scaleX = containerWidth / contentWidth;
-        const scaleY = containerHeight / contentHeight;
-        const scale = Math.min(scaleX, scaleY, 1); // Don't zoom in past 100%
-        
-        updateZoom(scale);
-    }
-    
-    // Add zoom event listeners
-    zoomInBtn.addEventListener('click', zoomIn);
-    zoomOutBtn.addEventListener('click', zoomOut);
-    zoomFitBtn.addEventListener('click', zoomFit);
-    
-    // Add mouse wheel zoom support with Ctrl key
-    canvas.addEventListener('wheel', function(e) {
-        if (e.ctrlKey) {
-            e.preventDefault();
-            const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
-            updateZoom(currentZoom + delta);
-        }
-    });
-    
     // GLOBAL STATE
     let nodes = {};
     let connections = [];
@@ -104,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let nodeTypeDefinitions = {};
     
     // DOM ELEMENTS
+    const canvas = document.getElementById('workflow-canvas');
     const configPanel = document.querySelector('.config-panel');
     const selectNodeMsg = document.querySelector('.select-node-msg');
     const nodeConfigForm = document.querySelector('.node-config');
@@ -120,6 +48,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const workflowListModal = new bootstrap.Modal(document.getElementById('workflow-list-modal'));
     const workflowResultModal = new bootstrap.Modal(document.getElementById('workflow-result-modal'));
     
+    // ZOOM CONTROLS
+    const zoomInButton = document.getElementById('zoom-in');
+    const zoomOutButton = document.getElementById('zoom-out');
+    const resetZoomButton = document.getElementById('reset-zoom');
+    const zoomFitButton = document.getElementById('zoom-fit');
+    const zoomLevelDisplay = document.getElementById('zoom-level-display');
+    let zoomLevel = 1;
+    
     // INITIALIZATION
     
     // Fetch node types from server
@@ -127,38 +63,6 @@ document.addEventListener('DOMContentLoaded', function() {
         nodeTypeDefinitions = types;
         initDragAndDrop();
     });
-    
-    // Copy to clipboard with feedback
-    function copyToClipboard(text, element) {
-        navigator.clipboard.writeText(text).then(() => {
-            // Show copy feedback
-            const rect = element.getBoundingClientRect();
-            const tooltip = document.createElement('div');
-            tooltip.className = 'copy-tooltip';
-            tooltip.textContent = 'Copied!';
-            tooltip.style.top = `${rect.top - 30}px`;
-            tooltip.style.left = `${rect.left + (rect.width / 2) - 30}px`;
-            document.body.appendChild(tooltip);
-            
-            // Show the tooltip
-            setTimeout(() => tooltip.classList.add('show'), 10);
-            
-            // Highlight the element
-            const originalBg = element.style.backgroundColor;
-            element.style.backgroundColor = '#c3e6cb';
-            
-            // Remove tooltip and restore styles after delay
-            setTimeout(() => {
-                tooltip.classList.remove('show');
-                setTimeout(() => tooltip.remove(), 300);
-                element.style.backgroundColor = originalBg;
-            }, 1500);
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
-            // Show error toast
-            showConnectionError('Failed to copy to clipboard');
-        });
-    }
     
     // Make the canvas droppable
     function initDragAndDrop() {
@@ -235,13 +139,6 @@ document.addEventListener('DOMContentLoaded', function() {
             currentWorkflowName = this.value || "Untitled Workflow";
         });
         
-        // Setup click event delegation for variable copying
-        document.addEventListener('click', function(e) {
-            if (e.target.tagName === 'CODE' && e.target.closest('.var-list')) {
-                copyToClipboard(e.target.textContent, e.target);
-            }
-        });
-        
         // Import workflow
         importWorkflowBtn.addEventListener('click', function() {
             // Create a file input
@@ -298,6 +195,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+        
+        // Zoom controls
+        zoomInButton.addEventListener('click', function() {
+            console.log('Zoom In clicked'); // Debug log
+            zoomLevel += 0.1; // Increase zoom level
+            updateZoom();
+        });
+        
+        zoomOutButton.addEventListener('click', function() {
+            console.log('Zoom Out clicked'); // Debug log
+            zoomLevel -= 0.1; // Decrease zoom level
+            updateZoom();
+        });
+        
+        resetZoomButton.addEventListener('click', function() {
+            zoomLevel = 1; // Reset zoom level to 100%
+            updateZoom();
+        });
+        
+        zoomFitButton.addEventListener('click', function() {
+            zoomLevel = 1; // Reset zoom level to 100%
+            updateZoom();
+        });
     }
     
     // NODE OPERATIONS
@@ -348,8 +268,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const nodePorts = document.createElement('div');
         nodePorts.className = 'node-ports';
         
-        // Input ports - skip for manual_trigger nodes
-        if (nodeTypeDef.inputs && nodeTypeDef.inputs.length > 0 && nodeType !== 'manual_trigger') {
+        // Input ports - don't create for manual_trigger
+        if (nodeType !== 'manual_trigger' && nodeTypeDef.inputs && nodeTypeDef.inputs.length > 0) {
             const inputPort = document.createElement('div');
             inputPort.className = 'input-port';
             
@@ -366,8 +286,42 @@ document.addEventListener('DOMContentLoaded', function() {
             nodePorts.appendChild(inputPort);
         }
         
-        // Output ports
-        if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
+        // Special handling for If node - create two distinct output ports
+        if (nodeType === 'if_condition') {
+            // True output
+            const trueOutputPort = document.createElement('div');
+            trueOutputPort.className = 'output-port true-port';
+            
+            const trueOutputHandle = document.createElement('div');
+            trueOutputHandle.className = 'port-handle output-handle true-handle';
+            trueOutputHandle.setAttribute('data-port', 'true');
+            
+            const trueOutputLabel = document.createElement('div');
+            trueOutputLabel.className = 'port-label';
+            trueOutputLabel.textContent = 'True';
+            
+            trueOutputPort.appendChild(trueOutputLabel);
+            trueOutputPort.appendChild(trueOutputHandle);
+            nodePorts.appendChild(trueOutputPort);
+            
+            // False output
+            const falseOutputPort = document.createElement('div');
+            falseOutputPort.className = 'output-port false-port';
+            
+            const falseOutputHandle = document.createElement('div');
+            falseOutputHandle.className = 'port-handle output-handle false-handle';
+            falseOutputHandle.setAttribute('data-port', 'false');
+            
+            const falseOutputLabel = document.createElement('div');
+            falseOutputLabel.className = 'port-label';
+            falseOutputLabel.textContent = 'False';
+            
+            falseOutputPort.appendChild(falseOutputLabel);
+            falseOutputPort.appendChild(falseOutputHandle);
+            nodePorts.appendChild(falseOutputPort);
+        } 
+        // Regular output ports for other nodes
+        else if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
             const outputPort = document.createElement('div');
             outputPort.className = 'output-port';
             
@@ -458,50 +412,70 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Make end points for Regular nodes
         if (nodeType !== 'if_condition') {
-            // Input endpoints - skip for manual trigger
-            if (nodeTypeDef.inputs && nodeTypeDef.inputs.length > 0 && nodeType !== 'manual_trigger') {
-                jsPlumbInstance.makeTarget(nodeEl.querySelector('.input-handle'), {
-                    anchor: 'Left',
-                    maxConnections: 1 // Limit to one connection per input
-                });
+            // Special case for manual_trigger - it should not have inputs
+            if (nodeType === 'manual_trigger') {
+                // Only create output endpoints
+                if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
+                    jsPlumbInstance.makeSource(nodeEl.querySelector('.output-handle'), {
+                        anchor: 'Right',
+                        maxConnections: -1
+                    });
+                }
+            } else {
+                // For all other regular nodes
+                if (nodeTypeDef.inputs && nodeTypeDef.inputs.length > 0) {
+                    jsPlumbInstance.makeTarget(nodeEl.querySelector('.input-handle'), {
+                        anchor: 'Left',
+                        maxConnections: -1
+                    });
+                }
+                
+                if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
+                    jsPlumbInstance.makeSource(nodeEl.querySelector('.output-handle'), {
+                        anchor: 'Right',
+                        maxConnections: -1
+                    });
+                }
             }
+        } 
+        // Special endpoint configuration for If node
+        else {
+            // Make the input handle a target
+            jsPlumbInstance.makeTarget(nodeEl.querySelector('.input-handle'), {
+                anchor: 'Left',
+                maxConnections: -1
+            });
             
-            if (nodeTypeDef.outputs && nodeTypeDef.outputs.length > 0) {
-                jsPlumbInstance.makeSource(nodeEl.querySelector('.output-handle'), {
-                    anchor: 'Right',
-                    maxConnections: -1 // Can connect to multiple targets
-                });
-            }
+            // Make the true and false handles sources
+            jsPlumbInstance.makeSource(nodeEl.querySelector('.true-handle'), {
+                anchor: 'Right',
+                maxConnections: -1
+            });
+            
+            jsPlumbInstance.makeSource(nodeEl.querySelector('.false-handle'), {
+                anchor: 'Right',
+                maxConnections: -1
+            });
         }
         
         // Setup connection listeners
         jsPlumbInstance.bind('connection', function(info) {
-            // Add connection to state with explicit source and target IDs
-            const connection = {
-                source: info.source.id,  // Use the actual element IDs
-                target: info.target.id,
-                sourcePort: info.source.getAttribute('data-port'),
-                targetPort: info.target.getAttribute('data-port')
-            };
-            connections.push(connection);
+            // Add connection to state
+            connections.push({
+                source: info.sourceId,
+                target: info.targetId,
+                sourcePort: info.sourceId === nodeId ? info.source.dataset.port : undefined,
+                targetPort: info.targetId === nodeId ? info.target.dataset.port : undefined
+            });
             
             // Remove guide when first connection is made
             document.querySelector('.canvas-guide')?.remove();
-            
-            // Log connection for debugging
-            console.log('Connection added:', connection);
         });
         
         jsPlumbInstance.bind('connectionDetached', function(info) {
-            // Remove connection from state using actual element IDs
+            // Remove connection from state
             connections = connections.filter(conn => 
-                !(conn.source === info.source.id && conn.target === info.target.id));
-            
-            // Log disconnection for debugging
-            console.log('Connection removed:', {
-                source: info.source.id,
-                target: info.target.id
-            });
+                !(conn.source === info.sourceId && conn.target === info.targetId));
         });
         
         // Make node selectable
@@ -610,83 +584,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const configFormEl = nodeConfigForm.querySelector('.node-config-form');
         configFormEl.innerHTML = '';
         
-        // Add connected nodes output reference section if this node has inputs
-        if (nodeTypeDef.inputs && nodeTypeDef.inputs.length > 0 && node.type !== 'manual_trigger') {
-            // Find incoming connections
-            const incomingConnections = connections.filter(conn => conn.target === nodeId);
-            
-            if (incomingConnections.length > 0) {
-                // Create a section for available output variables
-                const outputsSection = document.createElement('div');
-                outputsSection.className = 'available-outputs mb-4';
-                
-                const outputsTitle = document.createElement('h6');
-                outputsTitle.className = 'text-muted mb-2';
-                outputsTitle.textContent = 'Available Input Variables';
-                outputsSection.appendChild(outputsTitle);
-                
-                // For each incoming connection, show the source node and its available outputs
-                incomingConnections.forEach(conn => {
-                    const sourceNode = nodes[conn.source];
-                    if (!sourceNode) return;
-                    
-                    const sourceNodeDef = nodeTypeDefinitions[sourceNode.type];
-                    if (!sourceNodeDef) return;
-                    
-                    const sourceInfo = document.createElement('div');
-                    sourceInfo.className = 'source-node-info mb-2 p-2 border rounded';
-                    
-                    // Add source node info
-                    const sourceHeader = document.createElement('div');
-                    sourceHeader.className = 'd-flex align-items-center mb-2';
-                    sourceHeader.innerHTML = `
-                        <div class="source-node-icon me-2" style="background-color: ${sourceNodeDef.color}; width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas ${sourceNodeDef.icon} fa-xs text-white"></i>
-                        </div>
-                        <div class="source-node-name fw-bold">${sourceNode.id}</div>
-                    `;
-                    sourceInfo.appendChild(sourceHeader);
-                    
-                    // Add output variables
-                    const varList = document.createElement('div');
-                    varList.className = 'var-list small';
-                    
-                    // Add common output variable for all nodes
-                    varList.innerHTML = `<code>{{context.${sourceNode.id}.result}}</code> - Node result output<br>`;
-                    
-                    // For specific node types, add custom output variables
-                    if (sourceNode.type === 'http_request') {
-                        varList.innerHTML += `
-                            <code>{{context.${sourceNode.id}.status_code}}</code> - Status code<br>
-                            <code>{{context.${sourceNode.id}.headers}}</code> - Response headers<br>
-                            <code>{{context.${sourceNode.id}.body}}</code> - Response body
-                        `;
-                    } else if (sourceNode.type === 'read_file') {
-                        varList.innerHTML += `
-                            <code>{{context.${sourceNode.id}.content}}</code> - File content<br>
-                            <code>{{context.${sourceNode.id}.size}}</code> - File size
-                        `;
-                    }
-                    
-                    sourceInfo.appendChild(varList);
-                    outputsSection.appendChild(sourceInfo);
-                });
-                
-                // Add helper text on how to use variables
-                const helperText = document.createElement('div');
-                helperText.className = 'text-muted small mt-2';
-                helperText.textContent = 'You can use these variables in your configuration by copying the code.';
-                outputsSection.appendChild(helperText);
-                
-                // Add to config form
-                configFormEl.appendChild(outputsSection);
-                
-                // Add a separator
-                const separator = document.createElement('hr');
-                configFormEl.appendChild(separator);
-            }
-        }
-        
         if (nodeTypeDef.configSchema) {
             for (const [key, schema] of Object.entries(nodeTypeDef.configSchema)) {
                 // Check if field should be shown
@@ -727,6 +624,44 @@ document.addEventListener('DOMContentLoaded', function() {
                         showConfigPanel(nodeId);
                     });
                 }
+                
+                // Add auto-save functionality
+                if (input) {
+                    const eventType = input.type === 'checkbox' ? 'change' : 'input';
+                    input.addEventListener(eventType, () => {
+                        // Get the value based on input type
+                        let value;
+                        if (input.type === 'checkbox') {
+                            value = input.checked;
+                        } else if (schema.type === 'object' || schema.type === 'array') {
+                            try {
+                                value = JSON.parse(input.value || '{}');
+                            } catch (e) {
+                                console.error(`JSON parse error in ${key}:`, e);
+                                return;
+                            }
+                        } else {
+                            value = input.value;
+                        }
+                        
+                        // Update node config
+                        if (!node.config) node.config = {};
+                        node.config[key] = value;
+                        
+                        // Visual feedback for auto-save
+                        const saveBtn = document.getElementById('apply-config');
+                        saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved';
+                        saveBtn.classList.remove('btn-primary');
+                        saveBtn.classList.add('btn-success');
+                        
+                        // Reset button after delay
+                        setTimeout(() => {
+                            saveBtn.innerHTML = '<i class="fas fa-save"></i> Apply';
+                            saveBtn.classList.remove('btn-success');
+                            saveBtn.classList.add('btn-primary');
+                        }, 1000);
+                    });
+                }
             }
         }
     }
@@ -748,109 +683,99 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Apply node configuration
     function applyNodeConfig() {
-        if (!selectedNodeId) {
-            return;
-        }
+        if (!selectedNodeId) return;
         
         const node = nodes[selectedNodeId];
-        if (!node) {
-            return;
-        }
+        if (!node) return;
         
-        const nodeType = node.type;
+        const nodeTypeDef = nodeTypeDefinitions[node.type];
+        if (!nodeTypeDef) return;
         
-        // Validate the form first
-        const nodeConfigForm = document.querySelector('.node-config');
-        if (!window.validateNodeConfigForm(nodeConfigForm, nodeType)) {
-            // Show validation alert
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-danger mb-3';
-            alertDiv.textContent = 'Please fill in all required fields correctly.';
-            
-            // Check if an alert already exists
-            const existingAlert = nodeConfigForm.querySelector('.alert-danger');
-            if (existingAlert) {
-                existingAlert.remove();
-            }
-            
-            // Insert at the top of the form
-            nodeConfigForm.insertBefore(alertDiv, nodeConfigForm.firstChild);
-            
-            // Auto-hide the alert after 5 seconds
-            setTimeout(() => {
-                alertDiv.classList.add('fade');
-                setTimeout(() => alertDiv.remove(), 5000);
-            }, 5000);
-            
-            return;
-        }
-        
-        // Proceed with collecting and applying the config
+        // Collect form values
         const config = {};
         
-        // Get all input fields
-        const inputs = nodeConfigForm.querySelectorAll('input, select, textarea');
-        inputs.forEach(input => {
-            const key = input.name;
-            
-            if (key) {
+        if (nodeTypeDef.configSchema) {
+            for (const [key, schema] of Object.entries(nodeTypeDef.configSchema)) {
+                const input = document.getElementById(key);
+                if (!input) continue;
+                
                 if (input.type === 'checkbox') {
                     config[key] = input.checked;
+                } else if (schema.type === 'object' || schema.type === 'array') {
+                    try {
+                        config[key] = JSON.parse(input.value || '{}');
+                    } catch (e) {
+                        alert(`Invalid JSON for field ${schema.title || key}`);
+                        console.error(`JSON parse error in ${key}:`, e);
+                        return;
+                    }
                 } else {
                     config[key] = input.value;
                 }
             }
-        });
+        }
         
-        // Save the configuration
+        // Update node config
         node.config = config;
         
-        // Close config panel
-        hideConfigPanel();
-        
-        // Update the node display
-        updateNodeDisplay(selectedNodeId);
+        // Show success message
+        alert('Node configuration applied');
     }
     
     // WORKFLOW OPERATIONS
     
     // Serialize workflow to JSON
-    function serializeWorkflow() {
-        // Convert nodes object to array
-        const nodesArray = Object.values(nodes).map(node => {
-            // Get node element for position
-            const nodeElement = document.getElementById(node.id);
-            const position = nodeElement ? {
-                x: parseInt(nodeElement.style.left) || 0,
-                y: parseInt(nodeElement.style.top) || 0
-            } : { x: 0, y: 0 };
+    function serializeWorkflow(options = {}) {
+        // Get all connections from jsPlumb
+        const jsPlumbConnections = jsPlumbInstance.getConnections();
+        
+        // Map connections to the correct format
+        const serializedConnections = jsPlumbConnections.map(conn => {
+            // Get the parent node elements that contain these endpoints
+            const sourceNodeEl = conn.source.closest('.workflow-node');
+            const targetNodeEl = conn.target.closest('.workflow-node');
+            
+            // Get the node IDs from the elements
+            const sourceNodeId = sourceNodeEl.id;
+            const targetNodeId = targetNodeEl.id;
+            
+            // Get port information if available
+            const sourcePort = conn.source.getAttribute('data-port') || 'output';
+            const targetPort = conn.target.getAttribute('data-port') || 'input';
             
             return {
-                id: node.id,
-                type: node.type,
-                config: node.config || {},
-                position: position
+                source: sourceNodeId,
+                target: targetNodeId,
+                sourcePort: sourcePort,
+                targetPort: targetPort
             };
         });
         
-        // Log the current state for debugging
-        console.log('Current Nodes:', nodesArray);
-        console.log('Current Connections:', connections);
+        // If skipFilter is set, return all nodes/connections (for validation)
+        if (options.skipFilter) {
+            return {
+                nodes: Object.values(nodes),
+                connections: serializedConnections,
+                variables: {}
+            };
+        }
         
-        // Create the workflow data
-        const workflowData = {
-            nodes: nodesArray,
-            connections: connections.map(conn => ({
-                source: conn.source,
-                target: conn.target
-            })),
+        // Otherwise, filter to only include nodes in execution order
+        let executionOrder = [];
+        if (typeof validateAndPrepareExecution === 'function') {
+            const validation = validateAndPrepareExecution();
+            if (validation && validation.executionOrder) {
+                executionOrder = validation.executionOrder;
+            }
+        }
+        const nodeSet = new Set(executionOrder);
+        const filteredNodes = Object.values(nodes).filter(n => nodeSet.has(n.id));
+        const filteredConnections = serializedConnections.filter(conn => nodeSet.has(conn.source) && nodeSet.has(conn.target));
+        return {
+            nodes: filteredNodes,
+            connections: filteredConnections,
             variables: {}
         };
-        
-        // Log the serialized workflow for debugging
-        console.log('Serialized Workflow:', workflowData);
-        
-        return workflowData;
     }
     
     // Clear current workflow
@@ -1036,10 +961,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const nodeMap = {};
         if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
             workflowData.nodes.forEach((node, index) => {
-                // Use stored position if available, otherwise use default grid layout
-                const position = node.position || {};
-                const x = position.x !== undefined ? position.x : 100 + (index % 3) * 250;
-                const y = position.y !== undefined ? position.y : 100 + Math.floor(index / 3) * 150;
+                // Position nodes in a grid layout if no position
+                const x = 100 + (index % 3) * 250;
+                const y = 100 + Math.floor(index / 3) * 150;
                 
                 const nodeId = createNode(node.type, x, y);
                 nodeMap[node.id] = nodeId;
@@ -1069,63 +993,223 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Execute the current workflow
-    function executeWorkflow() {
-        const workflow = serializeWorkflow();
+    // Helper function to show workflow errors
+    function showWorkflowError(message) {
+        console.error("Workflow error:", message);
         
-        // Check specifically for manual trigger node first (most important validation)
-        const triggerNodeTypes = [
-            "manual_trigger", "webhook_trigger", "schedule_trigger", 
-            "email_trigger", "file_trigger"
-        ];
+        // Create error message
+        const errorToast = document.createElement('div');
+        errorToast.className = 'alert alert-danger';
+        errorToast.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error: ${message}`;
+        errorToast.style.position = 'fixed';
+        errorToast.style.top = '20px';
+        errorToast.style.left = '50%';
+        errorToast.style.transform = 'translateX(-50%)';
+        errorToast.style.zIndex = '9999';
+        errorToast.style.padding = '10px 20px';
+        errorToast.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
         
-        const triggerNodes = workflow.nodes.filter(node => 
-            triggerNodeTypes.includes(node.type)
-        );
+        document.body.appendChild(errorToast);
         
-        // REMOVED: Do not stop workflow if there are no trigger nodes
-        // if (triggerNodes.length === 0) {
-        //     showValidationError("Workflow must contain at least one trigger node (like Manual Trigger)");
-        //     return;
-        // }
-        
-        // Check if at least one trigger is connected (front-end validation only)
+        // Remove after 5 seconds
+        setTimeout(() => {
+            errorToast.style.opacity = '0';
+            errorToast.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => errorToast.remove(), 500);
+        }, 5000);
+    }
+    
+    // --- NEW: Validation and Execution Preparation ---
+    function validateAndPrepareExecution() {
+        // Clear previous error states
+        clearNodeErrorStates();
+        clearLonelyNodeWarnings();
+
+        // 1. Find all manual_trigger nodes
+        const triggerNodes = Object.values(nodes).filter(n => n.type === 'manual_trigger');
+        if (triggerNodes.length === 0) {
+            showWorkflowError('Workflow must have at least one manual trigger node to execute.');
+            return { valid: false };
+        }
+
+        // 2. Check each manual_trigger node is connected to at least one other node
+        const workflow = serializeWorkflow({ skipFilter: true }); // get all nodes/connections
+        const { nodes: nodeList, connections: connList } = workflow;
+        const nodeIdSet = new Set(nodeList.map(n => n.id));
         let triggerConnected = false;
-        if (workflow.connections) {
-            for (const triggerNode of triggerNodes) {
-                if (workflow.connections.some(conn => conn.source === triggerNode.id)) {
-                    triggerConnected = true;
-                    break;
+        for (const trigger of triggerNodes) {
+            if (connList.some(conn => conn.source === trigger.id)) {
+                triggerConnected = true;
+                break;
+            }
+        }
+        if (!triggerConnected) {
+            showWorkflowError('Manual trigger node must be connected to at least one other node.');
+            // Mark all manual triggers as error
+            triggerNodes.forEach(trigger => markNodeError(trigger.id, 'Manual trigger not connected'));
+            return { valid: false };
+        }
+
+        // 3. Build execution order using FIFO queue (BFS), respecting connection creation order
+        // Build adjacency list (outgoing edges)
+        const adj = {};
+        connList.forEach(conn => {
+            if (!adj[conn.source]) adj[conn.source] = [];
+            adj[conn.source].push({ target: conn.target, sourcePort: conn.sourcePort, targetPort: conn.targetPort });
+        });
+        // Track visited nodes to avoid cycles
+        const visited = new Set();
+        const executionOrder = [];
+        const queue = [];
+        // Enqueue all manual triggers in order
+        triggerNodes.forEach(trigger => {
+            queue.push(trigger.id);
+            visited.add(trigger.id);
+        });
+        while (queue.length > 0) {
+            const nodeId = queue.shift();
+            executionOrder.push(nodeId);
+            if (adj[nodeId]) {
+                for (const edge of adj[nodeId]) {
+                    if (!visited.has(edge.target)) {
+                        queue.push(edge.target);
+                        visited.add(edge.target);
+                    }
                 }
             }
         }
-        
-
-        
-        // Additional validation
-        const validationResult = validateWorkflow(workflow);
-        if (!validationResult.valid) {
-            // Show validation errors
-            displayValidationErrors(validationResult.errors);
-            return;
+        // --- Lonely node detection ---
+        const lonelyNodes = Object.keys(nodes).filter(nodeId => !executionOrder.includes(nodeId));
+        lonelyNodes.forEach(nodeId => markLonelyNodeWarning(nodeId));
+        if (lonelyNodes.length > 0) {
+            showWorkflowError('Some nodes are not connected to the workflow and will not be executed. Please connect or remove them.');
+            
         }
-        
+        // 4. Validate each node in execution order
+        for (const nodeId of executionOrder) {
+            const node = nodes[nodeId];
+            const nodeTypeDef = nodeTypeDefinitions[node.type];
+            if (!nodeTypeDef) continue;
+            // Skip all validation for manual_trigger nodes
+            if (node.type === 'manual_trigger') continue;
+            // Field validation
+            if (nodeTypeDef.configSchema) {
+                for (const [key, schema] of Object.entries(nodeTypeDef.configSchema)) {
+                    // Only check visible fields (respect showIf)
+                    if (schema.showIf) {
+                        let shouldShow = true;
+                        for (const [condKey, condValue] of Object.entries(schema.showIf)) {
+                            if (node.config[condKey] !== condValue) {
+                                shouldShow = false;
+                                break;
+                            }
+                        }
+                        if (!shouldShow) continue;
+                    }
+                    // Required field check
+                    if (schema.required && (node.config[key] === undefined || node.config[key] === null || node.config[key] === '')) {
+                        markNodeError(nodeId, `Missing required field: ${schema.title || key}`);
+                        showWorkflowError(`Node "${nodeTypeDef.name}" is missing required field: ${schema.title || key}`);
+                        return { valid: false };
+                    }
+                    // Type check (basic)
+                    if (schema.type === 'number' && isNaN(Number(node.config[key]))) {
+                        markNodeError(nodeId, `Field ${schema.title || key} must be a number`);
+                        showWorkflowError(`Node "${nodeTypeDef.name}" field ${schema.title || key} must be a number`);
+                        return { valid: false };
+                    }
+                    if (schema.type === 'object' || schema.type === 'array') {
+                        try {
+                            if (typeof node.config[key] === 'string') {
+                                JSON.parse(node.config[key]);
+                            }
+                        } catch (e) {
+                            markNodeError(nodeId, `Invalid JSON in field: ${schema.title || key}`);
+                            showWorkflowError(`Node "${nodeTypeDef.name}" has invalid JSON in field: ${schema.title || key}`);
+                            return { valid: false };
+                        }
+                    }
+                }
+            }
+            // Dependency validation: check all input nodes exist
+            if (nodeTypeDef.inputs && nodeTypeDef.inputs.length > 0) {
+                // For each input, check if there is at least one incoming connection
+                const hasInput = connList.some(conn => conn.target === nodeId);
+                if (!hasInput) {
+                    markNodeError(nodeId, 'Missing input connection');
+                    showWorkflowError(`Node "${nodeTypeDef.name}" is missing input connection.`);
+                    return { valid: false };
+                }
+            }
+        }
+        // All checks passed
+        return { valid: true, executionOrder };
+    }
+
+    // Helper to mark a node as error and show icon
+    function markNodeError(nodeId, message) {
+        const nodeEl = document.getElementById(nodeId);
+        if (!nodeEl) return;
+        nodeEl.classList.add('node-error');
+        // Remove existing error badge if any
+        nodeEl.querySelectorAll('.node-error-badge').forEach(b => b.remove());
+        // Add error badge
+        const errorBadge = document.createElement('div');
+        errorBadge.className = 'node-error-badge';
+        errorBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+        errorBadge.title = message || 'Node validation error';
+        nodeEl.appendChild(errorBadge);
+    }
+
+    // Helper to mark a node as lonely (yellow warning)
+    function markLonelyNodeWarning(nodeId) {
+        const nodeEl = document.getElementById(nodeId);
+        if (!nodeEl) return;
+        // Remove existing lonely badge if any
+        nodeEl.querySelectorAll('.node-lonely-badge').forEach(b => b.remove());
+        // Add lonely badge
+        const lonelyBadge = document.createElement('div');
+        lonelyBadge.className = 'node-lonely-badge';
+        lonelyBadge.style.position = 'absolute';
+        lonelyBadge.style.top = '-18px';
+        lonelyBadge.style.left = '50%';
+        lonelyBadge.style.transform = 'translateX(-50%)';
+        lonelyBadge.style.background = '#ffe066';
+        lonelyBadge.style.color = '#856404';
+        lonelyBadge.style.borderRadius = '8px';
+        lonelyBadge.style.padding = '2px 8px';
+        lonelyBadge.style.fontSize = '0.8em';
+        lonelyBadge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
+        lonelyBadge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Not connected';
+        nodeEl.appendChild(lonelyBadge);
+    }
+
+    // Helper to clear all lonely node warnings
+    function clearLonelyNodeWarnings() {
+        document.querySelectorAll('.node-lonely-badge').forEach(b => b.remove());
+    }
+
+    // --- REPLACE executeWorkflow ---
+    function executeWorkflow() {
         // Clear any previous error states
         clearNodeErrorStates();
-        
+        // Validate and prepare execution order
+        const validation = validateAndPrepareExecution();
+        if (!validation.valid) {
+            // Abort execution if validation failed
+            return;
+        }
+        // If all checks pass, proceed as before
+        const workflow = serializeWorkflow();
         // Show execution progress
         showExecutionProgress(0);
-        
         // Clear debug logs
         clearDebugLogs();
-        
         // Update UI
         executeWorkflowBtn.disabled = true;
         executeWorkflowBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Executing...';
-        
         // Switch to debug tab
         document.getElementById('debug-tab').click();
-        
         // Add initial log
         addDebugLogEntry({
             timestamp: new Date().toISOString(),
@@ -1133,7 +1217,6 @@ document.addEventListener('DOMContentLoaded', function() {
             node_id: null,
             message: 'Starting workflow execution...'
         });
-        
         fetch('/api/run-workflow', {
             method: 'POST',
             headers: {
@@ -1150,11 +1233,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             // Hide progress bar
             hideExecutionProgress();
-            
             // Re-enable button
             executeWorkflowBtn.disabled = false;
             executeWorkflowBtn.innerHTML = '<i class="fas fa-play me-1"></i> Execute';
-            
             if (data.success) {
                 // Show success message in debug log
                 addDebugLogEntry({
@@ -1163,23 +1244,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     node_id: null,
                     message: `Workflow execution completed in ${data.results.execution_time.toFixed(2)} seconds`
                 });
-                
                 // Update debug logs
                 if (data.results.debug_logs && data.results.debug_logs.length > 0) {
                     populateDebugLogs(data.results.debug_logs);
                 }
-                
                 // Highlight nodes with their status
                 if (data.results.node_statuses) {
                     updateNodeStatuses(data.results.node_statuses);
                 }
-                
                 // Display detailed results
                 displayWorkflowResults(data.results);
-                
                 // If there are errors, ensure they're visible
                 if (data.results.errors && data.results.errors.length > 0) {
-                    // Add error summary to debug log
                     data.results.errors.forEach(error => {
                         addDebugLogEntry({
                             timestamp: new Date().toISOString(),
@@ -1193,16 +1269,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Handle API error response
                 const errorMessage = data.error || 'Unknown error executing workflow';
                 console.error('Error executing workflow:', errorMessage);
-                
-                // Add error to debug log
                 addDebugLogEntry({
                     timestamp: new Date().toISOString(),
                     level: 'error',
                     node_id: null,
                     message: `Error executing workflow: ${errorMessage}`
                 });
-                
-                // Show error in debug panel
                 if (data.traceback) {
                     addDebugLogEntry({
                         timestamp: new Date().toISOString(),
@@ -1214,163 +1286,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            // Hide progress bar
             hideExecutionProgress();
-            
-            // Re-enable button
             executeWorkflowBtn.disabled = false;
             executeWorkflowBtn.innerHTML = '<i class="fas fa-play me-1"></i> Execute';
-            
             console.error('Error executing workflow:', error);
-            
-            // Add error to debug log
             addDebugLogEntry({
                 timestamp: new Date().toISOString(),
                 level: 'error',
                 node_id: null,
                 message: `Network error: ${error.message}`
             });
-        });
-    }
-    
-    // Client-side workflow validation
-    function validateWorkflow(workflow) {
-        const errors = [];
-        
-        // Check if workflow has nodes
-        if (!workflow.nodes || workflow.nodes.length === 0) {
-            errors.push("Workflow must contain at least one node");
-            return { valid: false, errors };
-        }
-        
-        // Create node lookup map
-        const nodes = {};
-        workflow.nodes.forEach(node => {
-            nodes[node.id] = node;
-        });
-        
-        // Check nodes that should have only one input
-        const singleInputNodeTypes = [
-            "http_request", "write_file", "read_file", "email_send", "gmail_send", 
-            "save_to_sheets", "save_to_drive", "webhook_response", "set_variable",
-            "wait", "data_transform"
-        ];
-        
-        // Count input connections for each node
-        const inputConnectionCounts = {};
-        if (workflow.connections) {
-            workflow.connections.forEach(conn => {
-                if (!inputConnectionCounts[conn.target]) {
-                    inputConnectionCounts[conn.target] = 0;
-                }
-                inputConnectionCounts[conn.target]++;
-            });
-        }
-        
-        // Check for multiple input violations
-        workflow.nodes.forEach(node => {
-            if (singleInputNodeTypes.includes(node.type) && 
-                inputConnectionCounts[node.id] && 
-                inputConnectionCounts[node.id] > 1) {
-                errors.push(`Node '${node.id}' (${getNodeTypeName(node.type)}) can only have one input connection`);
-            }
-        });
-        
-        // Check required configuration fields
-        workflow.nodes.forEach(node => {
-            const config = node.config || {};
-            
-            // HTTP Request node requires URL
-            if (node.type === 'http_request' && !config.url) {
-                errors.push(`Node '${node.id}' (HTTP Request) requires a URL`);
-            }
-            
-            // Email nodes require to, subject, and body
-            else if (node.type === 'email_send') {
-                ['to', 'subject', 'body'].forEach(field => {
-                    if (!config[field]) {
-                        errors.push(`Node '${node.id}' (Email Send) requires '${field}'`);
-                    }
-                });
-            }
-            
-            // File operations require path
-            else if (['write_file', 'read_file'].includes(node.type) && !config.path) {
-                errors.push(`Node '${node.id}' (${getNodeTypeName(node.type)}) requires a file path`);
-            }
-            
-            // Write file needs content
-            else if (node.type === 'write_file' && !config.content) {
-                errors.push(`Node '${node.id}' (Write File) requires content`);
-            }
-        });
-        
-        return {
-            valid: errors.length === 0,
-            errors
-        };
-    }
-    
-    // Helper to get readable node type name
-    function getNodeTypeName(nodeType) {
-        const nodeTypeDef = nodeTypeDefinitions[nodeType];
-        return nodeTypeDef ? nodeTypeDef.name : nodeType;
-    }
-    
-    // Display validation errors
-    function displayValidationErrors(errors) {
-        // Clear previous debug logs
-        clearDebugLogs();
-        
-        // Switch to debug tab
-        document.getElementById('debug-tab').click();
-        
-        // Add validation error header
-        addDebugLogEntry({
-            timestamp: new Date().toISOString(),
-            level: 'error',
-            node_id: null,
-            message: 'Workflow Validation Failed'
-        });
-        
-        // Add each error
-        errors.forEach(error => {
-            addDebugLogEntry({
-                timestamp: new Date().toISOString(),
-                level: 'error',
-                node_id: null,
-                message: error
-            });
-        });
-        
-        // Display error toast
-        const toastContainer = document.querySelector('.toast-container');
-        if (!toastContainer) {
-            return;
-        }
-        
-        const toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-danger border-0';
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    <strong>Validation Error</strong>: ${errors[0]} ${errors.length > 1 ? `(+${errors.length - 1} more)` : ''}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        `;
-        
-        toastContainer.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast, { autohide: true, delay: 5000 });
-        bsToast.show();
-        
-        // Remove toast once hidden
-        toast.addEventListener('hidden.bs.toast', function() {
-            toast.remove();
         });
     }
     
@@ -1446,28 +1371,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 errorBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
                 errorBadge.title = 'Node execution failed - click to view error details';
                 
-                // Add click handler to show debug tab and highlight the error
+                // Add click handler to show error panel instead of just switching to debug tab
                 errorBadge.addEventListener('click', (e) => {
                     e.stopPropagation(); // Don't select the node
                     
-                    // Switch to debug tab
-                    document.getElementById('debug-tab').click();
-                    
-                    // Find and highlight the error log for this node
-                    const logEntries = document.querySelectorAll('.debug-log-entry');
-                    logEntries.forEach(entry => {
-                        const nodeIdSpan = entry.querySelector('.debug-node-id');
-                        if (nodeIdSpan && nodeIdSpan.textContent === nodeId && entry.classList.contains('log-error')) {
-                            // Highlight this entry
-                            entry.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            entry.classList.add('highlight-log');
-                            
-                            // Remove highlight after a delay
-                            setTimeout(() => {
-                                entry.classList.remove('highlight-log');
-                            }, 2000);
-                        }
-                    });
+                    // Find error information for this node
+                    const nodeResult = getNodeExecutionResult(nodeId);
+                    if (nodeResult && nodeResult.error) {
+                        // Show contextual error panel
+                        showWorkflowError(nodeResult.error, nodeId);
+                    } else {
+                        // Fallback to debug tab if we can't find specific error info
+                        document.getElementById('debug-tab').click();
+                        
+                        // Find and highlight the error log for this node
+                        const logEntries = document.querySelectorAll('.debug-log-entry');
+                        logEntries.forEach(entry => {
+                            const nodeIdSpan = entry.querySelector('.debug-node-id');
+                            if (nodeIdSpan && nodeIdSpan.textContent === nodeId && entry.classList.contains('log-error')) {
+                                // Highlight this entry
+                                entry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                entry.classList.add('highlight-log');
+                                
+                                // Remove highlight after a delay
+                                setTimeout(() => {
+                                    entry.classList.remove('highlight-log');
+                                }, 2000);
+                            }
+                        });
+                    }
                 });
                 
                 nodeEl.appendChild(errorBadge);
@@ -1476,6 +1408,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 nodeEl.classList.remove('node-error');
             }
         });
+    }
+    
+    // Helper function to get node execution result
+    function getNodeExecutionResult(nodeId) {
+        // Check if we have results stored
+        if (window.lastWorkflowResults && window.lastWorkflowResults.nodes && window.lastWorkflowResults.nodes[nodeId]) {
+            return window.lastWorkflowResults.nodes[nodeId];
+        }
+        return null;
     }
     
     function clearDebugLogs() {
@@ -1712,56 +1653,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     resultBody.appendChild(tracebackDiv);
                 }
             } else {
-                // Check if it's an HTTP Request node and display specific fields
-                if (nodeResult.type === 'http_request' && nodeResult.result) {
-                    let httpResultHtml = '<h6>HTTP Response:</h6>';
+                // Format result as JSON with syntax highlighting
+                try {
+                    let resultOutput;
                     
-                    if (nodeResult.result.status_code) {
-                        httpResultHtml += `<p><strong>Status Code:</strong> ${nodeResult.result.status_code}</p>`;
-                    }
-                    
-                    if (nodeResult.result.headers) {
-                        httpResultHtml += '<h6>Headers:</h6><pre class="json-content">' + formatJson(JSON.stringify(nodeResult.result.headers, null, 2)) + '</pre>';
-                    }
-                    
-                    if (nodeResult.result.body) {
-                         // Check if body is JSON
+                    // Check result type and format appropriately
+                    if (typeof nodeResult.result === 'object' && nodeResult.result !== null) {
+                        resultOutput = formatJson(JSON.stringify(nodeResult.result, null, 2));
+                    } else if (typeof nodeResult.result === 'string') {
+                        // Check if it's JSON string
                         try {
-                            const bodyJson = JSON.parse(nodeResult.result.body);
-                            httpResultHtml += '<h6>Body:</h6><pre class="json-content">' + formatJson(JSON.stringify(bodyJson, null, 2)) + '</pre>';
+                            const parsed = JSON.parse(nodeResult.result);
+                            resultOutput = formatJson(JSON.stringify(parsed, null, 2));
                         } catch (e) {
-                            // Not JSON, display as plain text
-                            httpResultHtml += '<h6>Body:</h6><pre class="plain-text">' + nodeResult.result.body + '</pre>';
+                            // Not JSON, display as text
+                            resultOutput = nodeResult.result;
                         }
+                    } else {
+                        // Format other types
+                        resultOutput = String(nodeResult.result);
                     }
                     
-                    resultBody.innerHTML = httpResultHtml;
-                } else {
-                    // Format other node results as JSON with syntax highlighting
-                    try {
-                        let resultOutput;
-                        
-                        // Check result type and format appropriately
-                        if (typeof nodeResult.result === 'object' && nodeResult.result !== null) {
-                            resultOutput = formatJson(JSON.stringify(nodeResult.result, null, 2));
-                        } else if (typeof nodeResult.result === 'string') {
-                            // Check if it's JSON string
-                            try {
-                                const parsed = JSON.parse(nodeResult.result);
-                                resultOutput = formatJson(JSON.stringify(parsed, null, 2));
-                            } catch (e) {
-                                // Not JSON, display as text
-                                resultOutput = nodeResult.result;
-                            }
-                        } else {
-                            // Format other types
-                            resultOutput = String(nodeResult.result);
-                        }
-                        
-                        resultBody.innerHTML = resultOutput;
-                    } catch (e) {
-                        resultBody.textContent = 'Error formatting result: ' + e.message;
-                    }
+                    resultBody.innerHTML = resultOutput;
+                } catch (e) {
+                    resultBody.textContent = 'Error formatting result: ' + e.message;
                 }
             }
             
@@ -1835,137 +1750,4 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('load', function() {
         jsPlumbInstance.setContainer(canvas);
     });
-
-    // Add connection validation for single input nodes
-    jsPlumbInstance.bind("beforeDrop", function(info) {
-        const targetId = info.targetId;
-        const sourceId = info.sourceId;
-        
-        // Prevent nodes from connecting to themselves
-        if (targetId === sourceId) {
-            showConnectionError("Nodes cannot connect to themselves");
-            return false;
-        }
-        
-        // Get node types
-        const targetNode = document.getElementById(targetId);
-        const sourceNode = document.getElementById(sourceId);
-        
-        if (!targetNode || !sourceNode) {
-            return false;
-        }
-        
-        const targetNodeType = targetNode.dataset.nodeType;
-        
-        // List of node types that can only have one input
-        const singleInputNodeTypes = [
-            "http_request", "write_file", "read_file", "email_send", "gmail_send", 
-            "save_to_sheets", "save_to_drive", "webhook_response", "set_variable",
-            "wait", "data_transform"
-        ];
-        
-        // Check if target node can only have one input
-        if (singleInputNodeTypes.includes(targetNodeType)) {
-            // Count existing connections to this target
-            const connections = jsPlumbInstance.getConnections({
-                target: targetId
-            });
-            
-            // If there's already a connection, prevent the new one
-            if (connections.length > 0) {
-                const nodeTypeName = getNodeTypeName(targetNodeType);
-                showConnectionError(`${nodeTypeName} nodes can only have one input connection`);
-                return false;
-            }
-        }
-        
-        return true;
-    });
-
-    // Display connection error message
-    function showConnectionError(message) {
-        const toastContainer = document.querySelector('.toast-container');
-        if (!toastContainer) {
-            return;
-        }
-        
-        const toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-danger border-0';
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    <strong>Connection Error</strong>: ${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        `;
-        
-        toastContainer.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast, { autohide: true, delay: 3000 });
-        bsToast.show();
-        
-        // Remove toast once hidden
-        toast.addEventListener('hidden.bs.toast', function() {
-            toast.remove();
-        });
-    }
-
-    // Helper function to show a single validation error
-    function showValidationError(errorMessage) {
-        // Clear previous debug logs
-        clearDebugLogs();
-        
-        // Switch to debug tab
-        document.getElementById('debug-tab').click();
-        
-        // Add validation error header
-        addDebugLogEntry({
-            timestamp: new Date().toISOString(),
-            level: 'error',
-            node_id: null,
-            message: 'Workflow Validation Failed'
-        });
-        
-        // Add the error
-        addDebugLogEntry({
-            timestamp: new Date().toISOString(),
-            level: 'error',
-            node_id: null,
-            message: errorMessage
-        });
-        
-        // Display error toast
-        const toastContainer = document.querySelector('.toast-container');
-        if (!toastContainer) {
-            return;
-        }
-        
-        const toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-danger border-0';
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    <strong>Validation Error</strong>: ${errorMessage}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        `;
-        
-        toastContainer.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast, { autohide: true, delay: 5000 });
-        bsToast.show();
-        
-        // Remove toast once hidden
-        toast.addEventListener('hidden.bs.toast', function() {
-            toast.remove();
-        });
-    }
 });

@@ -47,10 +47,24 @@ const nodeTypes = {
         inputs: ['trigger'],
         outputs: ['result'],
         configSchema: {
-            path: {
+            file_format: {
                 type: 'string',
-                title: 'File Path',
-                description: 'Path to write the file (relative to workspace)',
+                title: 'File Format',
+                description: 'Choose the file format to save (txt or csv)',
+                enum: ['txt', 'csv'],
+                default: 'txt',
+                required: true
+            },
+            file_name: {
+                type: 'string',
+                title: 'File Name',
+                description: 'Name of the output file (e.g. output.txt or output.csv)',
+                required: true
+            },
+            folder_path: {
+                type: 'string',
+                title: 'Folder Path',
+                description: 'Destination folder for the file. You can type or use the Choose Folder button.',
                 required: true
             },
             content: {
@@ -366,6 +380,33 @@ function createFormField(key, schema) {
     }
     
     formGroup.appendChild(input);
+    
+    if (key === 'folder_path') {
+        const folderBtn = document.createElement('button');
+        folderBtn.type = 'button';
+        folderBtn.className = 'btn btn-secondary btn-sm ms-2';
+        folderBtn.textContent = 'Choose Folder';
+        folderBtn.onclick = function() {
+            // Use file input with webkitdirectory for folder selection (Chrome/Edge)
+            const folderInput = document.createElement('input');
+            folderInput.type = 'file';
+            folderInput.webkitdirectory = true;
+            folderInput.style.display = 'none';
+            folderInput.addEventListener('change', function(e) {
+                if (folderInput.files.length > 0) {
+                    // Get the folder path from the first file
+                    const fullPath = folderInput.files[0].webkitRelativePath;
+                    const folder = fullPath.split('/')[0];
+                    input.value = folder;
+                    input.dispatchEvent(new Event('input'));
+                }
+            });
+            document.body.appendChild(folderInput);
+            folderInput.click();
+            setTimeout(() => folderInput.remove(), 1000);
+        };
+        formGroup.appendChild(folderBtn);
+    }
     
     return formGroup;
 }
