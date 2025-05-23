@@ -51,14 +51,14 @@ I implemented:
 
 ## 🤖 Why I Built This Instead of Using n8n
 
-| Feature                    | n8n              | Swarm (My Version)           |
-|---------------------------|------------------|------------------------------|
+| Feature                   | n8n              | Swarm (My Version)            |
+|---------------------------|------------------|------------------------------ |
 | Fully Local               | ❌               | ✅ (My top priority)         |
-| Easily Add Python Nodes   | ❌ (TS-based)     | ✅ (Just add a `.py` file)   |
+| Easily Add Python Nodes   | ❌ (TS-based)    | ✅ (Just add a `.py` file)   |
 | Frontend Simplicity       | ✅               | ✅ (Same look, simpler code) |
-| Backend Complexity        | 😵 (Heavy stack) | 😌 (Light Flask app I wrote) |
-| Custom Execution Engine   | ❌               | ✅ (Written by me)           |
-| IoT & File Support        | Limited          | Built-in                    |
+| Backend Complexity        | 😵 (Heavy stack) | 😌 (Light Flask app )        |
+| Custom Execution Engine   | ❌               | ✅ (I love making my tools)  |
+| IoT & File Support        | Limited          | Built-in                      |
 
 I wanted something light, personal, extensible, and fast. Swarm is exactly that.
 
