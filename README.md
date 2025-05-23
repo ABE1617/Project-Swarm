@@ -6,7 +6,7 @@ Welcome to **Swarm**, a project I built from the ground up as a fully local, mod
 
 ## 👋 What I Built
 
-I designed Swarm as a **node-based visual automation builder**—just like n8n—but made it more developer-friendly, easier to extend, and focused entirely on **local execution**.
+I designed Swarm as a **node-based visual automation builder** just like n8n but made it more developer friendly and user friendly (somehow), easier to extend, and focused entirely on **local execution**.
 
 I implemented:
 
