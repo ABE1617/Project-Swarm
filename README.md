@@ -1,6 +1,6 @@
 # 🐝 Swarm – My Local, Scalable Automation Engine
 
-Welcome to **Swarm**, a project I built from the ground up as a fully local, modular automation engine using **Python**, **Flask**, **HTML/CSS/JS**, and **Bootstrap**. I was inspired by tools like [n8n](https://n8n.io), but I wanted more control, better local performance, and easier extensibility—so I made my own.
+Welcome to **Swarm**, a project I built from the ground up as a fully local, modular automation engine using **Python**, **Flask**, **HTML/CSS/JS**, and **Bootstrap**. I was inspired by tools like [n8n](https://n8n.io), but I wanted more control, better local performance, and easier extensibility so I made my own XD
 
 ---
 
