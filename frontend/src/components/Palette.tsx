@@ -11,7 +11,13 @@ function PaletteItem({ spec }: { spec: NodeSpec }) {
   }
   return (
     <div className="palette-item" draggable onDragStart={onDragStart} title={spec.description}>
-      <div className="node-icon" style={{ background: spec.color }}>
+      <div
+        className="node-icon"
+        style={{
+          background: `color-mix(in srgb, ${spec.color} 16%, transparent)`,
+          color: spec.color,
+        }}
+      >
         <NodeIcon name={spec.icon} size={14} />
       </div>
       <div className="palette-item-text">

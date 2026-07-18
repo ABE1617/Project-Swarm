@@ -32,7 +32,7 @@ export default function AuthPage() {
       <form className="auth-card" onSubmit={submit}>
         <div className="auth-logo">🐝</div>
         <h1>Swarm</h1>
-        <p className="auth-tagline">Local-first workflow automation</p>
+        <p className="auth-tagline">Automation that runs on your machine</p>
 
         <label>
           Username

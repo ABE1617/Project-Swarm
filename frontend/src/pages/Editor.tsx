@@ -1,7 +1,5 @@
 import {
   addEdge,
-  Background,
-  BackgroundVariant,
   Controls,
   MiniMap,
   ReactFlow,
@@ -49,6 +47,7 @@ function EditorInner() {
   const setWorkflow = useStore((s) => s.setWorkflow)
   const startRun = useStore((s) => s.startRun)
   const resetRun = useStore((s) => s.resetRun)
+  const runStatus = useStore((s) => s.run.status)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -216,7 +215,7 @@ function EditorInner() {
       />
       <div className="editor-main">
         <Palette />
-        <div className="canvas-wrap">
+        <div className="canvas-wrap" data-running={runStatus === 'running'}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -231,9 +230,14 @@ function EditorInner() {
             fitView
             proOptions={{ hideAttribution: true }}
           >
-            <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} />
             <Controls />
-            <MiniMap pannable zoomable />
+            <MiniMap
+              pannable
+              zoomable
+              maskColor="rgba(20, 17, 13, 0.78)"
+              nodeColor="#3a332a"
+              nodeStrokeColor="#55492f"
+            />
           </ReactFlow>
           <RunPanel />
         </div>

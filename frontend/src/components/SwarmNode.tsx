@@ -52,7 +52,13 @@ export default function SwarmNode({ id, data, selected }: NodeProps) {
         />
       ))}
 
-      <div className="node-icon" style={{ background: spec.color }}>
+      <div
+        className="node-icon"
+        style={{
+          background: `color-mix(in srgb, ${spec.color} 16%, transparent)`,
+          color: spec.color,
+        }}
+      >
         <NodeIcon name={spec.icon} size={15} />
       </div>
       <div className="node-body">

@@ -77,7 +77,10 @@ export default function Toolbar({ onSave, onRun, onNew, onLoad, onExport, onImpo
 
   return (
     <header className="toolbar">
-      <div className="toolbar-brand">🐝 Swarm</div>
+      <div className="toolbar-brand">
+        <span className="brand-hex">⬡</span>Swarm
+      </div>
+      <div className="toolbar-divider" />
 
       <input
         className="workflow-name"
