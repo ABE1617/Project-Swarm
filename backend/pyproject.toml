@@ -1,0 +1,27 @@
+[project]
+name = "swarm-backend"
+version = "2.0.0"
+description = "Project Swarm v2 - local-first visual workflow automation engine"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy>=2.0.41",
+    "httpx>=0.27.0",
+    "itsdangerous>=2.2.0",
+    "simpleeval>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.uv]
+package = false

@@ -1,0 +1,294 @@
+import {
+  addEdge,
+  Background,
+  BackgroundVariant,
+  Controls,
+  MarkerType,
+  MiniMap,
+  ReactFlow,
+  ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+  type Connection,
+  type Edge,
+  type Node,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { DragEvent, useCallback, useEffect, useMemo, useRef } from 'react'
+import { api } from '../api'
+import ConfigPanel from '../components/ConfigPanel'
+import Palette from '../components/Palette'
+import RunPanel from '../components/RunPanel'
+import SwarmNode, { type SwarmNodeData } from '../components/SwarmNode'
+import Toolbar from '../components/Toolbar'
+import { useStore } from '../store'
+import type { WorkflowDefinition } from '../types'
+
+type FlowNode = Node<SwarmNodeData>
+
+const nodeTypes = { swarm: SwarmNode }
+
+const defaultEdgeOptions = {
+  type: 'smoothstep' as const,
+  markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
+}
+
+const initialNodes: FlowNode[] = [
+  {
+    id: 'manual_trigger_1',
+    type: 'swarm',
+    position: { x: 140, y: 220 },
+    data: { kind: 'manual_trigger', config: {} },
+  },
+]
+
+function edgeLabel(sourceHandle?: string | null): string | undefined {
+  return sourceHandle && sourceHandle !== 'out' ? sourceHandle : undefined
+}
+
+function EditorInner() {
+  const loadSpecs = useStore((s) => s.loadSpecs)
+  const specsByType = useStore((s) => s.specsByType)
+  const workflowId = useStore((s) => s.workflowId)
+  const workflowName = useStore((s) => s.workflowName)
+  const setWorkflow = useStore((s) => s.setWorkflow)
+  const startRun = useStore((s) => s.startRun)
+  const resetRun = useStore((s) => s.resetRun)
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const { screenToFlowPosition, fitView } = useReactFlow()
+  const idCounter = useRef(2)
+
+  useEffect(() => {
+    void loadSpecs()
+  }, [loadSpecs])
+
+  const selectedNode = useMemo(() => nodes.find((n) => n.selected) ?? null, [nodes])
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      setEdges((eds) =>
+        addEdge({ ...connection, label: edgeLabel(connection.sourceHandle) }, eds),
+      )
+    },
+    [setEdges],
+  )
+
+  const onDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [])
+
+  const onDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault()
+      const kind = e.dataTransfer.getData('application/swarm-node')
+      if (!kind) return
+      const spec = specsByType[kind]
+      if (!spec) return
+
+      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      let id = `${kind}_${idCounter.current++}`
+      while (nodes.some((n) => n.id === id)) id = `${kind}_${idCounter.current++}`
+
+      const config: Record<string, unknown> = {}
+      for (const field of spec.config_fields) {
+        if (field.default !== undefined) config[field.key] = field.default
+      }
+      setNodes((nds) => [
+        ...nds,
+        { id, type: 'swarm', position, data: { kind, config } },
+      ])
+    },
+    [specsByType, screenToFlowPosition, nodes, setNodes],
+  )
+
+  const updateNodeConfig = useCallback(
+    (nodeId: string, patch: Record<string, unknown>) => {
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === nodeId
+            ? { ...n, data: { ...n.data, config: { ...n.data.config, ...patch } } }
+            : n,
+        ),
+      )
+    },
+    [setNodes],
+  )
+
+  const updateNodeLabel = useCallback(
+    (nodeId: string, label: string) => {
+      setNodes((nds) =>
+        nds.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, label } } : n)),
+      )
+    },
+    [setNodes],
+  )
+
+  const deleteNode = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId))
+      setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId))
+    },
+    [setNodes, setEdges],
+  )
+
+  const serialize = useCallback((): WorkflowDefinition => {
+    return {
+      nodes: nodes.map((n) => ({
+        id: n.id,
+        type: n.data.kind,
+        label: n.data.label,
+        position: n.position,
+        config: n.data.config ?? {},
+      })),
+      edges: edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle ?? undefined,
+        targetHandle: e.targetHandle ?? undefined,
+      })),
+    }
+  }, [nodes, edges])
+
+  const loadDefinition = useCallback(
+    (definition: WorkflowDefinition) => {
+      resetRun()
+      const flowNodes: FlowNode[] = (definition.nodes ?? []).map((n) => ({
+        id: n.id,
+        type: 'swarm',
+        position: n.position ?? { x: 100, y: 100 },
+        data: { kind: n.type, label: n.label, config: n.config ?? {} },
+      }))
+      const flowEdges: Edge[] = (definition.edges ?? []).map((e, i) => ({
+        id: e.id ?? `e_${i}_${e.source}_${e.target}`,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle,
+        targetHandle: e.targetHandle,
+        label: edgeLabel(e.sourceHandle),
+        ...defaultEdgeOptions,
+      }))
+      setNodes(flowNodes)
+      setEdges(flowEdges)
+      window.setTimeout(() => void fitView({ padding: 0.2 }), 50)
+    },
+    [resetRun, setNodes, setEdges, fitView],
+  )
+
+  const handleSave = useCallback(async () => {
+    const body = { name: workflowName || 'Untitled workflow', definition: serialize() }
+    if (workflowId != null) {
+      await api.put(`/api/workflows/${workflowId}`, body)
+    } else {
+      const { workflow } = await api.post<{ workflow: { id: number } }>('/api/workflows', body)
+      setWorkflow(workflow.id, body.name)
+    }
+  }, [workflowId, workflowName, serialize, setWorkflow])
+
+  const handleLoad = useCallback(
+    async (id: number) => {
+      const { workflow } = await api.get<{
+        workflow: { id: number; name: string; definition: WorkflowDefinition }
+      }>(`/api/workflows/${id}`)
+      setWorkflow(workflow.id, workflow.name)
+      loadDefinition(workflow.definition)
+    },
+    [setWorkflow, loadDefinition],
+  )
+
+  const handleNew = useCallback(() => {
+    resetRun()
+    setWorkflow(null, 'Untitled workflow')
+    setNodes(initialNodes)
+    setEdges([])
+  }, [resetRun, setWorkflow, setNodes, setEdges])
+
+  const handleRun = useCallback(async () => {
+    await startRun(serialize(), workflowId, workflowName)
+  }, [startRun, serialize, workflowId, workflowName])
+
+  const handleExport = useCallback(() => {
+    const payload = { name: workflowName, definition: serialize() }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${workflowName.replace(/[^\w-]+/g, '_') || 'workflow'}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [workflowName, serialize])
+
+  const handleImport = useCallback(
+    (file: File) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result))
+          const definition: WorkflowDefinition = parsed.definition ?? parsed
+          if (!Array.isArray(definition.nodes)) throw new Error('no nodes array')
+          setWorkflow(null, parsed.name ?? 'Imported workflow')
+          loadDefinition(definition)
+        } catch (e) {
+          window.alert(`Could not import: ${e instanceof Error ? e.message : 'invalid file'}`)
+        }
+      }
+      reader.readAsText(file)
+    },
+    [setWorkflow, loadDefinition],
+  )
+
+  return (
+    <div className="editor-layout">
+      <Toolbar
+        onSave={handleSave}
+        onRun={handleRun}
+        onNew={handleNew}
+        onLoad={handleLoad}
+        onExport={handleExport}
+        onImport={handleImport}
+      />
+      <div className="editor-main">
+        <Palette />
+        <div className="canvas-wrap">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            defaultEdgeOptions={defaultEdgeOptions}
+            deleteKeyCode={['Backspace', 'Delete']}
+            fitView
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} />
+            <Controls />
+            <MiniMap pannable zoomable />
+          </ReactFlow>
+          <RunPanel />
+        </div>
+        <ConfigPanel
+          node={selectedNode}
+          onConfigChange={updateNodeConfig}
+          onLabelChange={updateNodeLabel}
+          onDelete={deleteNode}
+        />
+      </div>
+    </div>
+  )
+}
+
+export default function Editor() {
+  return (
+    <ReactFlowProvider>
+      <EditorInner />
+    </ReactFlowProvider>
+  )
+}

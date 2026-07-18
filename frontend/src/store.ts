@@ -1,0 +1,136 @@
+import { create } from 'zustand'
+import { api, runEventsUrl } from './api'
+import type { NodeSpec, RunState, User, WorkflowDefinition } from './types'
+
+interface SwarmStore {
+  user: User | null
+  authChecked: boolean
+  specs: NodeSpec[]
+  specsByType: Record<string, NodeSpec>
+  workflowId: number | null
+  workflowName: string
+  run: RunState
+  ws: WebSocket | null
+
+  setUser: (user: User | null) => void
+  checkAuth: () => Promise<void>
+  loadSpecs: () => Promise<void>
+  setWorkflow: (id: number | null, name: string) => void
+  startRun: (definition: WorkflowDefinition, workflowId: number | null, workflowName: string) => Promise<void>
+  cancelRun: () => Promise<void>
+  resetRun: () => void
+}
+
+const idleRun: RunState = { runId: null, status: 'idle', nodeStates: {}, logs: [] }
+
+export const useStore = create<SwarmStore>((set, get) => ({
+  user: null,
+  authChecked: false,
+  specs: [],
+  specsByType: {},
+  workflowId: null,
+  workflowName: 'Untitled workflow',
+  run: idleRun,
+  ws: null,
+
+  setUser: (user) => set({ user, authChecked: true }),
+
+  checkAuth: async () => {
+    try {
+      const { user } = await api.get<{ user: User }>('/api/auth/me')
+      set({ user, authChecked: true })
+    } catch {
+      set({ user: null, authChecked: true })
+    }
+  },
+
+  loadSpecs: async () => {
+    const { nodes } = await api.get<{ nodes: NodeSpec[] }>('/api/nodes')
+    const byType: Record<string, NodeSpec> = {}
+    for (const spec of nodes) byType[spec.type] = spec
+    set({ specs: nodes, specsByType: byType })
+  },
+
+  setWorkflow: (id, name) => set({ workflowId: id, workflowName: name }),
+
+  startRun: async (definition, workflowId, workflowName) => {
+    get().ws?.close()
+    set({ run: { ...idleRun, status: 'running', runId: null } })
+
+    const { run_id } = await api.post<{ run_id: string }>('/api/run', {
+      definition,
+      workflow_id: workflowId,
+      workflow_name: workflowName,
+    })
+
+    const ws = new WebSocket(runEventsUrl(run_id))
+    set({ ws, run: { ...idleRun, status: 'running', runId: run_id } })
+
+    ws.onmessage = (msg) => {
+      const event = JSON.parse(msg.data)
+      set((state) => {
+        const run = { ...state.run, nodeStates: { ...state.run.nodeStates }, logs: [...state.run.logs] }
+        switch (event.type) {
+          case 'node_state':
+            run.nodeStates[event.node_id] = {
+              status: event.status,
+              output: event.output,
+              error: event.error,
+              reason: event.reason,
+              elapsed_ms: event.elapsed_ms,
+            }
+            if (event.error) {
+              run.logs.push({ level: 'error', node_id: event.node_id, message: event.error, ts: event.ts })
+            }
+            break
+          case 'log':
+            run.logs.push({ level: event.level, node_id: event.node_id, message: event.message, ts: event.ts })
+            break
+          case 'run_error':
+            run.error = event.message
+            run.logs.push({ level: 'error', message: event.message, ts: event.ts })
+            break
+          case 'run_finished':
+            run.status = event.status
+            break
+        }
+        return { run }
+      })
+    }
+    ws.onerror = () => {
+      set((state) => ({
+        run: { ...state.run, error: state.run.error ?? 'Lost connection to the run event stream' },
+      }))
+    }
+    ws.onclose = () => {
+      set((state) => {
+        if (state.run.status === 'running' && state.run.runId === run_id) {
+          // Socket closed without a run_finished: fall back to polling the snapshot.
+          api
+            .get<{ run: { status: string } }>(`/api/runs/${run_id}`)
+            .then(({ run }) =>
+              set((s) =>
+                s.run.runId === run_id
+                  ? { run: { ...s.run, status: run.status as RunState['status'] } }
+                  : s,
+              ),
+            )
+            .catch(() => undefined)
+        }
+        return { ws: null }
+      })
+    }
+  },
+
+  cancelRun: async () => {
+    const { run } = get()
+    if (run.runId && run.status === 'running') {
+      await api.post(`/api/runs/${run.runId}/cancel`)
+    }
+  },
+
+  resetRun: () => {
+    get().ws?.close()
+    set({ run: idleRun, ws: null })
+  },
+}))
