@@ -9,7 +9,7 @@ from app.engine.executor import execute_workflow
 from app.engine.registry import NodeRegistry
 
 VALID_ASYNC_NODE = textwrap.dedent(
-    '''
+    """
     NODE_TYPE = "shout"
     NODE_NAME = "Shout"
     NODE_DESCRIPTION = "Uppercase a message"
@@ -18,17 +18,17 @@ VALID_ASYNC_NODE = textwrap.dedent(
 
     async def run(ctx):
         return {"shouted": str(ctx.config.get("message", "")).upper()}
-    '''
+    """
 )
 
 VALID_SYNC_NODE = textwrap.dedent(
-    '''
+    """
     NODE_TYPE = "reverse"
     NODE_NAME = "Reverse"
 
     def run(ctx):
         return {"reversed": str(ctx.config.get("text", ""))[::-1]}
-    '''
+    """
 )
 
 
@@ -120,13 +120,13 @@ def test_underscore_files_ignored(nodes_dir):
 def test_user_node_overrides_builtin(nodes_dir):
     (nodes_dir / "my_delay.py").write_text(
         textwrap.dedent(
-            '''
+            """
             NODE_TYPE = "delay"
             NODE_NAME = "My Delay"
 
             async def run(ctx):
                 return {"custom": True}
-            '''
+            """
         )
     )
     registry = NodeRegistry()

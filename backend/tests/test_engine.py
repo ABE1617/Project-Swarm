@@ -1,7 +1,5 @@
 """Engine tests: everything the old engine could not do."""
 
-import asyncio
-
 import pytest
 
 from app.engine.executor import execute_workflow
@@ -98,10 +96,23 @@ async def test_true_branch_runs_false_branch_skips(registry):
                 {
                     "id": "check",
                     "type": "if_condition",
-                    "config": {"mode": "simple", "value1": "{{ input.count }}", "operator": ">", "value2": "3"},
+                    "config": {
+                        "mode": "simple",
+                        "value1": "{{ input.count }}",
+                        "operator": ">",
+                        "value2": "3",
+                    },
                 },
-                {"id": "yes", "type": "set_variable", "config": {"variables": '{"branch": "true"}'}},
-                {"id": "no", "type": "set_variable", "config": {"variables": '{"branch": "false"}'}},
+                {
+                    "id": "yes",
+                    "type": "set_variable",
+                    "config": {"variables": '{"branch": "true"}'},
+                },
+                {
+                    "id": "no",
+                    "type": "set_variable",
+                    "config": {"variables": '{"branch": "false"}'},
+                },
             ],
             [
                 {"source": "start", "target": "check", "sourceHandle": "out", "targetHandle": "in"},
@@ -125,7 +136,12 @@ async def test_skip_propagates_downstream(registry):
                 {
                     "id": "check",
                     "type": "if_condition",
-                    "config": {"mode": "simple", "value1": "{{ input.count }}", "operator": ">", "value2": "3"},
+                    "config": {
+                        "mode": "simple",
+                        "value1": "{{ input.count }}",
+                        "operator": ">",
+                        "value2": "3",
+                    },
                 },
                 {"id": "yes", "type": "set_variable", "config": {"variables": '{"a": 1}'}},
                 {"id": "after_yes", "type": "set_variable", "config": {"variables": '{"b": 2}'}},
@@ -133,7 +149,12 @@ async def test_skip_propagates_downstream(registry):
             [
                 {"source": "start", "target": "check", "sourceHandle": "out", "targetHandle": "in"},
                 {"source": "check", "target": "yes", "sourceHandle": "true", "targetHandle": "in"},
-                {"source": "yes", "target": "after_yes", "sourceHandle": "out", "targetHandle": "in"},
+                {
+                    "source": "yes",
+                    "target": "after_yes",
+                    "sourceHandle": "out",
+                    "targetHandle": "in",
+                },
             ],
         ),
         registry,
@@ -151,7 +172,12 @@ async def test_node_with_two_parents_runs_if_any_active(registry):
                 {
                     "id": "check",
                     "type": "if_condition",
-                    "config": {"mode": "simple", "value1": "{{ input.count }}", "operator": ">", "value2": "3"},
+                    "config": {
+                        "mode": "simple",
+                        "value1": "{{ input.count }}",
+                        "operator": ">",
+                        "value2": "3",
+                    },
                 },
                 {"id": "yes", "type": "set_variable", "config": {"variables": '{"from": "yes"}'}},
                 {"id": "no", "type": "set_variable", "config": {"variables": '{"from": "no"}'}},
@@ -179,7 +205,11 @@ async def test_error_marks_node_and_skips_downstream(registry):
         wf(
             [
                 trigger(),
-                {"id": "bad", "type": "transform", "config": {"mode": "parse_json", "text": "not valid json {"}},
+                {
+                    "id": "bad",
+                    "type": "transform",
+                    "config": {"mode": "parse_json", "text": "not valid json {"},
+                },
                 {"id": "after", "type": "set_variable", "config": {"variables": '{"a": 1}'}},
             ],
             [

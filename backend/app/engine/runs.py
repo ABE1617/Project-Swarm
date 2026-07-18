@@ -4,7 +4,7 @@ buffers events for WebSocket replay/streaming, and persists results to the DB.""
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.db import SessionLocal
@@ -28,11 +28,11 @@ class Run:
         self.subscribers: set[asyncio.Queue] = set()
         self.result: dict | None = None
         self.task: asyncio.Task | None = None
-        self.started_at = datetime.now(timezone.utc)
+        self.started_at = datetime.now(UTC)
         self.finished_at: datetime | None = None
 
     def emit(self, event: dict) -> None:
-        event.setdefault("ts", datetime.now(timezone.utc).isoformat())
+        event.setdefault("ts", datetime.now(UTC).isoformat())
         event["seq"] = len(self.events)
         self.events.append(event)
         for q in list(self.subscribers):
@@ -113,7 +113,7 @@ class RunManager:
             run.result = {"status": "error", "error": f"{type(e).__name__}: {e}"}
             run.emit({"type": "run_error", "message": run.result["error"]})
         finally:
-            run.finished_at = datetime.now(timezone.utc)
+            run.finished_at = datetime.now(UTC)
             run.emit({"type": "run_finished", "status": run.status})
             self._persist(run)
 

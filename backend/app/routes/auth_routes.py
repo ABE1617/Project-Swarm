@@ -19,9 +19,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 @router.post("/register")
 def register(body: RegisterRequest, response: Response, db: Session = Depends(get_db)):
     existing = (
-        db.query(User)
-        .filter(or_(User.username == body.username, User.email == body.email))
-        .first()
+        db.query(User).filter(or_(User.username == body.username, User.email == body.email)).first()
     )
     if existing:
         field = "Username" if existing.username == body.username else "Email"

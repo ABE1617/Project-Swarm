@@ -40,7 +40,8 @@ def _resolve_path(expr: str, scope: dict[str, Any]) -> Any:
         name = segments[1]
         if not _env_allowed(name):
             raise TemplateError(
-                f"Env var '{name}' is not templatable (allowed: *_API_KEY, *_TOKEN, *_SECRET, SWARM_*)"
+                f"Env var '{name}' is not templatable "
+                "(allowed: *_API_KEY, *_TOKEN, *_SECRET, SWARM_*)"
             )
         value = os.environ.get(name)
         if value is None:
@@ -57,9 +58,7 @@ def _resolve_path(expr: str, scope: dict[str, Any]) -> Any:
     value = scope[root]
     for seg in segments[1:]:
         try:
-            if isinstance(seg, int):
-                value = value[seg]
-            elif isinstance(value, dict):
+            if isinstance(seg, int) or isinstance(value, dict):
                 value = value[seg]
             else:
                 raise KeyError(seg)

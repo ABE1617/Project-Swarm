@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,17 +8,36 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import FRONTEND_DIST
-from app.db import init_db
+from app.db import SessionLocal, init_db
 from app.engine.registry import get_registry
+from app.models import Execution
 from app.routes import auth_routes, node_routes, run_routes, workflow_routes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+
+def _mark_interrupted_runs() -> None:
+    """Runs left in 'running' state by a previous process crash can never finish."""
+    db = SessionLocal()
+    try:
+        stale = (
+            db.query(Execution)
+            .filter(Execution.status == "running")
+            .update({"status": "interrupted", "finished_at": datetime.now(UTC)})
+        )
+        if stale:
+            db.commit()
+            logger.info("Marked %d orphaned run(s) as interrupted", stale)
+    finally:
+        db.close()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     get_registry()
+    _mark_interrupted_runs()
     yield
 
 
@@ -49,11 +69,15 @@ if FRONTEND_DIST.exists():
         if full_path and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(FRONTEND_DIST / "index.html")
+
 else:
 
     @app.get("/", include_in_schema=False)
     async def no_frontend():
         return {
             "app": "Project Swarm v2 API",
-            "hint": "Frontend not built yet - run `npm run build` in frontend/, or use the Vite dev server on :5173",
+            "hint": (
+                "Frontend not built yet - run `npm run build` in frontend/, "
+                "or use the Vite dev server on :5173"
+            ),
         }

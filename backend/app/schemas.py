@@ -1,11 +1,11 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=64)
-    email: str = Field(min_length=3, max_length=120)
+    username: str = Field(min_length=3, max_length=64, pattern=r"^[\w.-]+$")
+    email: EmailStr = Field(max_length=120)
     password: str = Field(min_length=6, max_length=128)
 
 
@@ -20,9 +20,39 @@ class UserOut(BaseModel):
     email: str
 
 
+class NodeDef(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str = Field(min_length=1, max_length=128)
+    type: str = Field(min_length=1, max_length=64)
+    label: str | None = Field(default=None, max_length=128)
+    position: dict[str, float] | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class EdgeDef(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str | None = None
+    source: str = Field(min_length=1)
+    target: str = Field(min_length=1)
+    sourceHandle: str | None = None
+    targetHandle: str | None = None
+
+
+class WorkflowDefinition(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    nodes: list[NodeDef] = Field(default_factory=list, max_length=500)
+    edges: list[EdgeDef] = Field(default_factory=list, max_length=2000)
+
+    def to_engine(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
+
+
 class WorkflowSave(BaseModel):
     name: str = Field(min_length=1, max_length=128)
-    definition: dict[str, Any]
+    definition: WorkflowDefinition
 
 
 class WorkflowOut(BaseModel):
@@ -33,7 +63,7 @@ class WorkflowOut(BaseModel):
 
 
 class RunRequest(BaseModel):
-    definition: dict[str, Any]
+    definition: WorkflowDefinition
     workflow_id: int | None = None
-    workflow_name: str = ""
+    workflow_name: str = Field(default="", max_length=128)
     input: Any = None

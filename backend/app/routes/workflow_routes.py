@@ -35,7 +35,7 @@ def list_workflows(user: User = Depends(get_current_user), db: Session = Depends
 def create_workflow(
     body: WorkflowSave, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    w = Workflow(name=body.name, data=json.dumps(body.definition), user_id=user.id)
+    w = Workflow(name=body.name, data=json.dumps(body.definition.to_engine()), user_id=user.id)
     db.add(w)
     db.commit()
     return {"workflow": _workflow_meta(w)}
@@ -62,7 +62,7 @@ def update_workflow(
     if w is None:
         raise HTTPException(status_code=404, detail="Workflow not found")
     w.name = body.name
-    w.data = json.dumps(body.definition)
+    w.data = json.dumps(body.definition.to_engine())
     db.commit()
     return {"workflow": _workflow_meta(w)}
 

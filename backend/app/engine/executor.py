@@ -11,11 +11,18 @@ import asyncio
 import json
 import time
 from collections import deque
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from app.engine.registry import NodeRegistry
 from app.engine.templating import render_config
-from app.engine.types import NodeContext, NodeExecutionError, NodeOutput, TemplateError, WorkflowError
+from app.engine.types import (
+    NodeContext,
+    NodeExecutionError,
+    NodeOutput,
+    TemplateError,
+    WorkflowError,
+)
 
 EmitFn = Callable[[dict], None]
 
@@ -34,7 +41,7 @@ def preview(data: Any) -> Any:
 
 
 class _EdgeState:
-    __slots__ = ("edge", "status", "data")
+    __slots__ = ("data", "edge", "status")
 
     def __init__(self, edge: dict):
         self.edge = edge
@@ -241,7 +248,7 @@ async def execute_workflow(
                 spec = registry.get(nodes[nid]["type"])
                 try:
                     data, handles = task.result()
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     fail(nid, f"Node timed out after {spec.timeout:.0f}s")
                     continue
                 except (TemplateError, NodeExecutionError) as e:

@@ -20,10 +20,11 @@ import inspect
 import logging
 import pkgutil
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any
 
 from app import config
 

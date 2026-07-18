@@ -1,3 +1,4 @@
+import contextlib
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
@@ -17,7 +18,7 @@ router = APIRouter(tags=["runs"])
 @router.post("/api/run")
 async def start_run(body: RunRequest, user: User = Depends(get_current_user)):
     run = manager.start(
-        definition=body.definition,
+        definition=body.definition.to_engine(),
         registry=get_registry(),
         user_id=user.id,
         workflow_id=body.workflow_id,
@@ -133,7 +134,5 @@ async def run_events(websocket: WebSocket, run_id: str):
         pass
     finally:
         run.unsubscribe(queue)
-        try:
+        with contextlib.suppress(RuntimeError):
             await websocket.close()
-        except RuntimeError:
-            pass
