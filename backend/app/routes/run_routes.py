@@ -22,7 +22,9 @@ async def start_run(body: RunRequest, user: User = Depends(get_current_user)):
     definition = body.definition.to_engine()
     if body.target_node_id:
         try:
-            definition = slice_to_node(definition, body.target_node_id)
+            definition = slice_to_node(
+                definition, body.target_node_id, include_target=not body.exclude_target
+            )
         except WorkflowError as e:
             raise HTTPException(status_code=422, detail=str(e)) from None
     run = manager.start(

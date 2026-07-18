@@ -50,3 +50,21 @@ async def test_sliced_run_executes_only_the_branch(registry):
     assert result["status"] == "success"
     assert set(result["outputs"]) == {"start", "a", "b"}
     assert "c" not in result["node_statuses"]
+
+
+def test_execute_previous_nodes_excludes_target():
+    sliced = slice_to_node(DEFINITION, "b", include_target=False)
+    assert {n["id"] for n in sliced["nodes"]} == {"start", "a"}
+    assert all(e["target"] != "b" for e in sliced["edges"])
+
+
+def test_execute_previous_nodes_on_trigger_rejected():
+    with pytest.raises(WorkflowError, match="no previous nodes"):
+        slice_to_node(DEFINITION, "start", include_target=False)
+
+
+async def test_previous_nodes_run_leaves_target_untouched(registry):
+    result = await execute_workflow(slice_to_node(DEFINITION, "b", include_target=False), registry)
+    assert result["status"] == "success"
+    assert set(result["outputs"]) == {"start", "a"}
+    assert "b" not in result["node_statuses"]

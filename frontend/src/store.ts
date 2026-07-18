@@ -34,6 +34,7 @@ interface SwarmStore {
     workflowId: number | null,
     workflowName: string,
     targetNodeId?: string,
+    excludeTarget?: boolean,
   ) => Promise<void>
   cancelRun: () => Promise<void>
   resetRun: () => void
@@ -95,7 +96,7 @@ export const useStore = create<SwarmStore>((set, get) => ({
 
   setWorkflow: (id, name) => set({ workflowId: id, workflowName: name }),
 
-  startRun: async (definition, workflowId, workflowName, targetNodeId) => {
+  startRun: async (definition, workflowId, workflowName, targetNodeId, excludeTarget) => {
     get().ws?.close()
     set({ run: { ...idleRun, status: 'running', runId: null } })
 
@@ -106,6 +107,7 @@ export const useStore = create<SwarmStore>((set, get) => ({
         workflow_id: workflowId,
         workflow_name: workflowName,
         target_node_id: targetNodeId ?? null,
+        exclude_target: excludeTarget ?? false,
       }))
     } catch (e) {
       set({

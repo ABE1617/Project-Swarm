@@ -200,6 +200,13 @@ function EditorInner() {
     [startRun, serialize, workflowId, workflowName],
   )
 
+  const handleRunPrevious = useCallback(
+    (nodeId: string) => {
+      void startRun(serialize(), workflowId, workflowName, nodeId, true)
+    },
+    [startRun, serialize, workflowId, workflowName],
+  )
+
   const handleExport = useCallback(() => {
     const payload = { name: workflowName, definition: serialize() }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -279,6 +286,7 @@ function EditorInner() {
           onLabelChange={updateNodeLabel}
           onDelete={deleteNode}
           onTestNode={handleTestNode}
+          onRunPrevious={handleRunPrevious}
         />
       </div>
     </div>

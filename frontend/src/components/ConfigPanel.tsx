@@ -1,5 +1,5 @@
 import type { Edge, Node } from '@xyflow/react'
-import { FlaskConical, Trash2 } from 'lucide-react'
+import { FlaskConical, Play, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { fieldDefaults, fieldVisible } from '../lib/fields'
 import { ancestorsOf, directSources, insertAtCursor } from '../lib/mapping'
@@ -15,6 +15,7 @@ interface Props {
   onLabelChange: (nodeId: string, label: string) => void
   onDelete: (nodeId: string) => void
   onTestNode: (nodeId: string) => void
+  onRunPrevious: (nodeId: string) => void
 }
 
 interface FocusedField {
@@ -156,13 +157,13 @@ function InputDataPanel({
   edges,
   allNodes,
   onPick,
-  onTestNode,
+  onRunPrevious,
 }: {
   node: Node<SwarmNodeData>
   edges: Edge[]
   allNodes: Node<SwarmNodeData>[]
   onPick: (template: string) => void
-  onTestNode: (nodeId: string) => void
+  onRunPrevious: (nodeId: string) => void
 }) {
   const nodeStates = useStore((s) => s.run.nodeStates)
   const specsByType = useStore((s) => s.specsByType)
@@ -184,20 +185,31 @@ function InputDataPanel({
     <div className="input-data">
       <div className="input-data-header">
         <span>Input data</span>
-        <button
-          className="btn btn-small"
-          title="Run this node and everything before it"
-          disabled={runStatus === 'running'}
-          onClick={() => onTestNode(node.id)}
-        >
-          <FlaskConical size={12} /> Test node
-        </button>
+        {withData.length > 0 && (
+          <button
+            className="btn btn-small"
+            title="Run everything before this node again to refresh its input data"
+            disabled={runStatus === 'running'}
+            onClick={() => onRunPrevious(node.id)}
+          >
+            <Play size={11} /> Execute previous nodes
+          </button>
+        )}
       </div>
       {withData.length === 0 ? (
-        <p className="input-data-empty">
-          Run the workflow (or Test node) to see the data coming into this node. Then click any
-          field to insert its reference.
-        </p>
+        <div className="input-data-cta">
+          <p className="input-data-empty">
+            No input data yet. Execute the previous nodes to see what data arrives here - then
+            click any field to map it into a parameter.
+          </p>
+          <button
+            className="btn btn-primary btn-small"
+            disabled={runStatus === 'running'}
+            onClick={() => onRunPrevious(node.id)}
+          >
+            <Play size={12} /> Execute previous nodes
+          </button>
+        </div>
       ) : (
         <>
           <p className="input-data-hint">
@@ -229,7 +241,9 @@ export default function ConfigPanel({
   onLabelChange,
   onDelete,
   onTestNode,
+  onRunPrevious,
 }: Props) {
+  const runStatus = useStore((s) => s.run.status)
   const spec = useStore((s) => (node ? s.specsByType[node.data.kind] : undefined))
   const runState = useStore((s) => (node ? s.run.nodeStates[node.id] : undefined))
   const setNotice = useStore((s) => s.setNotice)
@@ -300,7 +314,7 @@ export default function ConfigPanel({
         edges={edges}
         allNodes={allNodes}
         onPick={handlePick}
-        onTestNode={onTestNode}
+        onRunPrevious={onRunPrevious}
       />
 
       <div onFocusCapture={rememberFocus}>
@@ -333,19 +347,41 @@ export default function ConfigPanel({
           ))}
       </div>
 
-      {runState && runState.status !== 'pending' && (
-        <div className={`config-run-result ${runState.status}`}>
-          <div className="config-run-header">
-            Last run: {runState.status}
-            {runState.elapsed_ms !== undefined && <span> · {runState.elapsed_ms}ms</span>}
-          </div>
-          {runState.error && <pre className="run-error-text">{runState.error}</pre>}
-          {runState.reason && <div className="field-help">{runState.reason}</div>}
-          {runState.output !== undefined && (
-            <pre className="run-output">{JSON.stringify(runState.output, null, 2)}</pre>
-          )}
+      <div className={`config-run-result ${runState?.status ?? ''}`}>
+        <div className="output-header">
+          <span className="config-run-header">
+            {runState && runState.status !== 'pending' ? (
+              <>
+                Output: {runState.status}
+                {runState.elapsed_ms !== undefined && <span> · {runState.elapsed_ms}ms</span>}
+              </>
+            ) : (
+              'Output'
+            )}
+          </span>
+          <button
+            className="btn btn-small"
+            title="Run this node (and everything before it) to see its output"
+            disabled={runStatus === 'running'}
+            onClick={() => onTestNode(node.id)}
+          >
+            <FlaskConical size={12} /> Execute step
+          </button>
         </div>
-      )}
+        {runState && runState.status !== 'pending' ? (
+          <>
+            {runState.error && <pre className="run-error-text">{runState.error}</pre>}
+            {runState.reason && <div className="field-help">{runState.reason}</div>}
+            {runState.output !== undefined && (
+              <pre className="run-output">{JSON.stringify(runState.output, null, 2)}</pre>
+            )}
+          </>
+        ) : (
+          <p className="input-data-empty">
+            Not executed yet. Execute step runs this node with fresh data from the previous nodes.
+          </p>
+        )}
+      </div>
     </aside>
   )
 }

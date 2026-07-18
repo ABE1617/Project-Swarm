@@ -68,4 +68,6 @@ class RunRequest(BaseModel):
     workflow_name: str = Field(default="", max_length=128)
     input: Any = None
     target_node_id: str | None = Field(default=None, max_length=128)
-    """When set, only this node and its ancestors execute ('Test node')."""
+    """When set, only this node and its ancestors execute ('Execute step')."""
+    exclude_target: bool = False
+    """With target_node_id: run only the ancestors ('Execute previous nodes')."""

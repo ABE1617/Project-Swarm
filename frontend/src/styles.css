@@ -991,6 +991,26 @@ textarea.mono {
   margin: 8px 0 2px;
 }
 
+.input-data-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  padding-bottom: 4px;
+}
+
+.output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.output-header .config-run-header {
+  margin-bottom: 0;
+}
+
 .input-source {
   margin-top: 10px;
 }

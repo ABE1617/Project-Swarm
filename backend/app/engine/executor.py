@@ -50,11 +50,12 @@ class _EdgeState:
         self.data: Any = None
 
 
-def slice_to_node(definition: dict, target: str) -> dict:
-    """Reduce a definition to the target node plus everything upstream of it.
+def slice_to_node(definition: dict, target: str, include_target: bool = True) -> dict:
+    """Reduce a definition to a node's upstream subgraph.
 
-    Powers 'Test node': run a node with real data without executing the
-    rest of the workflow.
+    include_target=True powers 'Execute step' (run the node with real data);
+    include_target=False powers 'Execute previous nodes' (populate input data
+    without running the selected node - the n8n input-panel behavior).
     """
     nodes = definition.get("nodes", [])
     if target not in {n.get("id") for n in nodes}:
@@ -73,6 +74,11 @@ def slice_to_node(definition: dict, target: str) -> dict:
             continue
         keep.add(nid)
         stack.extend(parents.get(nid, []))
+
+    if not include_target:
+        keep.discard(target)
+        if not keep:
+            raise WorkflowError("This node has no previous nodes to execute")
 
     return {
         **definition,
