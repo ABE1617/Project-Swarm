@@ -89,11 +89,7 @@ export default function CredentialsModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {credentials.length === 0 && !creating && (
-          <p className="modal-empty">
-            No credentials yet. Google nodes need one to act on your account.
-          </p>
-        )}
+        {credentials.length === 0 && !creating && <p className="modal-empty">No credentials yet</p>}
 
         {credentials.map((cred) => (
           <div key={cred.id} className="credential-row">

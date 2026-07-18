@@ -29,14 +29,9 @@ function PaletteItem({ spec, disabled }: { spec: NodeSpec; disabled: boolean }) 
       >
         <NodeIcon name={spec.icon} size={14} />
       </div>
-      <div className="palette-item-text">
-        <div className="palette-item-name">
-          {spec.name}
-          {spec.source === 'custom' && <span className="badge-custom">custom</span>}
-        </div>
-        <div className="palette-item-desc">
-          {disabled ? 'Only one trigger per workflow' : spec.description}
-        </div>
+      <div className="palette-item-name">
+        {spec.name}
+        {spec.source === 'custom' && <span className="badge-custom">custom</span>}
       </div>
     </div>
   )
@@ -65,7 +60,6 @@ export default function Palette({ hasTrigger }: { hasTrigger: boolean }) {
   return (
     <aside className="palette">
       <div className="palette-header">
-        <span className="palette-hint">Drag nodes onto the canvas</span>
         <button
           className="btn btn-icon"
           title="Re-scan the nodes/ folder for drop-in node files"

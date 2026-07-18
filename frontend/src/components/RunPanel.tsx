@@ -61,13 +61,7 @@ export default function RunPanel() {
             )}
           </div>
           <div className="run-logs">
-            {run.logs.length === 0 && (
-              <div className="log-line muted">
-                {run.status === 'idle'
-                  ? 'Run the workflow to see logs here.'
-                  : 'This run produced no logs.'}
-              </div>
-            )}
+            {run.logs.length === 0 && <div className="log-line muted">No logs</div>}
             {run.logs.map((log, i) => (
               <div key={i} className={`log-line ${log.level}`}>
                 <span className="log-node">{log.node_id ?? '—'}</span>
