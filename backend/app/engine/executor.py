@@ -14,6 +14,7 @@ from collections import deque
 from collections.abc import Callable
 from typing import Any
 
+from app.engine.fields import missing_required
 from app.engine.registry import NodeRegistry
 from app.engine.templating import render_config
 from app.engine.types import (
@@ -103,6 +104,38 @@ async def execute_workflow(
     triggers = [nid for nid, n in nodes.items() if not registry.get(n["type"]).inputs]
     if not triggers:
         raise WorkflowError("Workflow needs a trigger node (e.g. Manual Trigger)")
+    if len(triggers) > 1:
+        raise WorkflowError(
+            f"Only one trigger node is allowed per workflow (found {len(triggers)}: "
+            f"{', '.join(sorted(triggers))})"
+        )
+
+    # Validate handles against the node specs and drop duplicate edges.
+    seen_edges: set[tuple] = set()
+    cleaned_edges = []
+    for e in edges:
+        src_spec = registry.get(nodes[e["source"]]["type"])
+        tgt_spec = registry.get(nodes[e["target"]]["type"])
+        if not tgt_spec.inputs:
+            raise WorkflowError(f"'{e['target']}' is a trigger and cannot receive connections")
+        sh = e.get("sourceHandle") or (src_spec.outputs[0] if src_spec.outputs else "out")
+        th = e.get("targetHandle") or tgt_spec.inputs[0]
+        if src_spec.outputs and sh not in src_spec.outputs:
+            raise WorkflowError(
+                f"Edge from '{e['source']}' uses unknown output handle '{sh}' "
+                f"(available: {', '.join(src_spec.outputs)})"
+            )
+        if th not in tgt_spec.inputs:
+            raise WorkflowError(
+                f"Edge into '{e['target']}' uses unknown input handle '{th}' "
+                f"(available: {', '.join(tgt_spec.inputs)})"
+            )
+        key = (e["source"], sh, e["target"], th)
+        if key in seen_edges:
+            continue
+        seen_edges.add(key)
+        cleaned_edges.append(e)
+    edges = cleaned_edges
 
     adj: dict[str, list[str]] = {nid: [] for nid in nodes}
     for e in edges:
@@ -216,6 +249,11 @@ async def execute_workflow(
         active_inputs = [es.data for es in in_edges[nid] if es.status == "active"]
         if not in_edges[nid] and run_input is not None:
             active_inputs = [run_input]
+
+        missing = missing_required(spec, node.get("config", {}))
+        if missing:
+            plural = "s" if len(missing) > 1 else ""
+            raise NodeExecutionError(f"Missing required field{plural}: {', '.join(missing)}")
 
         scope: dict[str, Any] = dict(outputs)
         scope["input"] = active_inputs[0] if active_inputs else None

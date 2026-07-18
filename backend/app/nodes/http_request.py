@@ -20,8 +20,14 @@ CONFIG_FIELDS = [
     {"key": "headers", "label": "Headers (JSON)", "type": "json", "placeholder": '{ "Authorization": "Bearer {{ env.MY_API_KEY }}" }'},
     {"key": "params", "label": "Query params (JSON)", "type": "json", "placeholder": '{ "page": 1 }'},
     {"key": "body_type", "label": "Body type", "type": "select", "options": ["none", "json", "text"], "default": "none"},
-    {"key": "body", "label": "Body", "type": "text", "placeholder": '{ "title": "{{ input.title }}" }'},
-    {"key": "timeout", "label": "Timeout (seconds)", "type": "number", "default": 30},
+    {
+        "key": "body",
+        "label": "Body",
+        "type": "text",
+        "placeholder": '{ "title": "{{ input.title }}" }',
+        "showIf": {"body_type": ["json", "text"]},
+    },
+    {"key": "timeout", "label": "Timeout (seconds)", "type": "number", "default": 30, "min": 1, "max": 600},
     {"key": "fail_on_error", "label": "Fail on 4xx/5xx response", "type": "boolean", "default": False},
 ]
 
@@ -44,7 +50,7 @@ async def run(ctx: NodeContext):
     method = (ctx.config.get("method") or "GET").upper()
     headers = _parse_json_field(ctx.config.get("headers"), "Headers") or {}
     params = _parse_json_field(ctx.config.get("params"), "Query params") or {}
-    timeout = float(ctx.config.get("timeout") or 30)
+    timeout = min(max(float(ctx.config.get("timeout") or 30), 1), 600)
 
     body_type = ctx.config.get("body_type") or "none"
     json_body = None

@@ -40,8 +40,8 @@ CONFIG_FIELDS = [
     },
     {"key": "system", "label": "System prompt", "type": "text", "placeholder": "You are a helpful assistant."},
     {"key": "prompt", "label": "Prompt", "type": "text", "required": True, "placeholder": "Summarize this: {{ input.body }}"},
-    {"key": "temperature", "label": "Temperature", "type": "number", "default": 0.7},
-    {"key": "max_tokens", "label": "Max tokens", "type": "number", "default": 1024},
+    {"key": "temperature", "label": "Temperature", "type": "number", "default": 0.7, "min": 0, "max": 2, "step": 0.1},
+    {"key": "max_tokens", "label": "Max tokens", "type": "number", "default": 1024, "min": 1, "max": 128000},
     {"key": "json_mode", "label": "Force JSON output", "type": "boolean", "default": False},
 ]
 
@@ -81,8 +81,8 @@ async def run(ctx: NodeContext):
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": float(ctx.config.get("temperature") or 0.7),
-        "max_tokens": int(ctx.config.get("max_tokens") or 1024),
+        "temperature": min(max(float(ctx.config.get("temperature") or 0.7), 0), 2),
+        "max_tokens": max(int(ctx.config.get("max_tokens") or 1024), 1),
     }
     if ctx.config.get("json_mode"):
         payload["response_format"] = {"type": "json_object"}

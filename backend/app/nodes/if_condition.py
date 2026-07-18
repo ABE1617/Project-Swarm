@@ -20,7 +20,16 @@ CONFIG_FIELDS = [
         "default": "==",
         "showIf": {"mode": "simple"},
     },
-    {"key": "value2", "label": "Value 2", "type": "string", "placeholder": "200", "showIf": {"mode": "simple"}},
+    {
+        "key": "value2",
+        "label": "Value 2",
+        "type": "string",
+        "placeholder": "200",
+        "showIf": {
+            "mode": "simple",
+            "operator": ["==", "!=", ">", "<", ">=", "<=", "contains", "startsWith", "endsWith"],
+        },
+    },
     {
         "key": "expression",
         "label": "Expression",
