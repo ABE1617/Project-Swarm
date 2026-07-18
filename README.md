@@ -62,7 +62,7 @@ cd frontend && npm run dev    # http://localhost:5173, proxies /api
 
 ## Writing your own node
 
-Drop a file in `backend/app/nodes/` — that's the whole integration:
+Drop a `.py` file into the `nodes/` folder at the project root — that's the whole integration. No restart needed: hit **Reload nodes** in the palette (or `POST /api/nodes/reload`) and it appears. Files that fail to load show up with their exact error instead of disappearing silently.
 
 ```python
 from app.engine.types import NodeContext
@@ -84,7 +84,7 @@ async def run(ctx: NodeContext):
     return {"shouted": str(ctx.config["message"]).upper()}
 ```
 
-Restart the server and it appears in the palette. Config values arrive with `{{ }}` templates already resolved. Return a dict (output data), or `NodeOutput(data, handle="true")` to route between multiple output handles. Plain `def run` also works (runs in a worker thread).
+Config values arrive with `{{ }}` templates already resolved. Return a dict (output data), or `NodeOutput(data, handle="true")` to route between multiple output handles. Plain `def run` also works (it runs in a worker thread). A drop-in node with the same `NODE_TYPE` as a built-in overrides it. Built-in nodes live in `backend/app/nodes/` and follow the identical contract.
 
 ## Configuration (env vars)
 
@@ -92,6 +92,7 @@ Restart the server and it appears in the palette. Config values arrive with `{{ 
 |---|---|
 | `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` | Default LLM keys (or set per-node) |
 | `SWARM_FILES_DIR` | File-node sandbox directory (default `./data`) |
+| `SWARM_NODES_DIR` | Drop-in node directory (default `./nodes`) |
 | `SWARM_ALLOW_ANY_PATH=1` | Disable the file sandbox |
 | `SWARM_SECRET` | Session signing key (auto-generated otherwise) |
 | `SWARM_DATABASE_URL` | Defaults to SQLite in `backend/instance/` |

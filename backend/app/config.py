@@ -14,6 +14,10 @@ FILES_DIR.mkdir(parents=True, exist_ok=True)
 # Set SWARM_ALLOW_ANY_PATH=1 to let file nodes escape the sandbox directory.
 ALLOW_ANY_PATH = os.environ.get("SWARM_ALLOW_ANY_PATH") == "1"
 
+# Drop-in directory for user node files: any .py here becomes a palette node.
+NODES_DIR = Path(os.environ.get("SWARM_NODES_DIR", PROJECT_DIR / "nodes")).resolve()
+NODES_DIR.mkdir(parents=True, exist_ok=True)
+
 DATABASE_URL = os.environ.get("SWARM_DATABASE_URL", f"sqlite:///{INSTANCE_DIR / 'swarm.db'}")
 
 FRONTEND_DIST = PROJECT_DIR / "frontend" / "dist"
