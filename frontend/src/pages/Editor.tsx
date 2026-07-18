@@ -138,7 +138,7 @@ function EditorInner() {
       const { nodes: flowNodes, edges: flowEdges } = deserializeFlow(definition)
       setNodes(flowNodes)
       setEdges(flowEdges)
-      window.setTimeout(() => void fitView({ padding: 0.2 }), 50)
+      window.setTimeout(() => void fitView({ padding: 0.3, maxZoom: 0.9 }), 50)
     },
     [resetRun, setNodes, setEdges, fitView],
   )
@@ -230,10 +230,11 @@ function EditorInner() {
             defaultEdgeOptions={defaultEdgeOptions}
             deleteKeyCode={['Backspace', 'Delete']}
             fitView
+            fitViewOptions={{ padding: 0.3, maxZoom: 0.9 }}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Dots} gap={26} size={1.1} color="#2b251c" />
-            <Controls />
+            <Controls position="top-left" />
             <MiniMap
               pannable
               zoomable
