@@ -3,7 +3,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  MarkerType,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
@@ -12,7 +11,6 @@ import {
   useReactFlow,
   type Connection,
   type Edge,
-  type Node,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { DragEvent, useCallback, useEffect, useMemo, useRef } from 'react'
@@ -20,19 +18,19 @@ import { api } from '../api'
 import ConfigPanel from '../components/ConfigPanel'
 import Palette from '../components/Palette'
 import RunPanel from '../components/RunPanel'
-import SwarmNode, { type SwarmNodeData } from '../components/SwarmNode'
+import SwarmNode from '../components/SwarmNode'
 import Toolbar from '../components/Toolbar'
+import {
+  defaultEdgeOptions,
+  deserializeFlow,
+  edgeLabel,
+  serializeFlow,
+  type FlowNode,
+} from '../lib/flow'
 import { useStore } from '../store'
 import type { WorkflowDefinition } from '../types'
 
-type FlowNode = Node<SwarmNodeData>
-
 const nodeTypes = { swarm: SwarmNode }
-
-const defaultEdgeOptions = {
-  type: 'smoothstep' as const,
-  markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
-}
 
 const initialNodes: FlowNode[] = [
   {
@@ -42,10 +40,6 @@ const initialNodes: FlowNode[] = [
     data: { kind: 'manual_trigger', config: {} },
   },
 ]
-
-function edgeLabel(sourceHandle?: string | null): string | undefined {
-  return sourceHandle && sourceHandle !== 'out' ? sourceHandle : undefined
-}
 
 function EditorInner() {
   const loadSpecs = useStore((s) => s.loadSpecs)
@@ -135,43 +129,12 @@ function EditorInner() {
     [setNodes, setEdges],
   )
 
-  const serialize = useCallback((): WorkflowDefinition => {
-    return {
-      nodes: nodes.map((n) => ({
-        id: n.id,
-        type: n.data.kind,
-        label: n.data.label,
-        position: n.position,
-        config: n.data.config ?? {},
-      })),
-      edges: edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        sourceHandle: e.sourceHandle ?? undefined,
-        targetHandle: e.targetHandle ?? undefined,
-      })),
-    }
-  }, [nodes, edges])
+  const serialize = useCallback((): WorkflowDefinition => serializeFlow(nodes, edges), [nodes, edges])
 
   const loadDefinition = useCallback(
     (definition: WorkflowDefinition) => {
       resetRun()
-      const flowNodes: FlowNode[] = (definition.nodes ?? []).map((n) => ({
-        id: n.id,
-        type: 'swarm',
-        position: n.position ?? { x: 100, y: 100 },
-        data: { kind: n.type, label: n.label, config: n.config ?? {} },
-      }))
-      const flowEdges: Edge[] = (definition.edges ?? []).map((e, i) => ({
-        id: e.id ?? `e_${i}_${e.source}_${e.target}`,
-        source: e.source,
-        target: e.target,
-        sourceHandle: e.sourceHandle,
-        targetHandle: e.targetHandle,
-        label: edgeLabel(e.sourceHandle),
-        ...defaultEdgeOptions,
-      }))
+      const { nodes: flowNodes, edges: flowEdges } = deserializeFlow(definition)
       setNodes(flowNodes)
       setEdges(flowEdges)
       window.setTimeout(() => void fitView({ padding: 0.2 }), 50)

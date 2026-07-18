@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import { api, runEventsUrl } from './api'
-import type { NodeSpec, RunState, User, WorkflowDefinition } from './types'
+import type { NodeLoadError, NodeSpec, RunState, User, WorkflowDefinition } from './types'
 
 interface SwarmStore {
   user: User | null
   authChecked: boolean
   specs: NodeSpec[]
   specsByType: Record<string, NodeSpec>
+  nodeLoadErrors: NodeLoadError[]
   workflowId: number | null
   workflowName: string
   run: RunState
@@ -15,6 +16,7 @@ interface SwarmStore {
   setUser: (user: User | null) => void
   checkAuth: () => Promise<void>
   loadSpecs: () => Promise<void>
+  reloadSpecs: () => Promise<void>
   setWorkflow: (id: number | null, name: string) => void
   startRun: (definition: WorkflowDefinition, workflowId: number | null, workflowName: string) => Promise<void>
   cancelRun: () => Promise<void>
@@ -28,6 +30,7 @@ export const useStore = create<SwarmStore>((set, get) => ({
   authChecked: false,
   specs: [],
   specsByType: {},
+  nodeLoadErrors: [],
   workflowId: null,
   workflowName: 'Untitled workflow',
   run: idleRun,
@@ -45,10 +48,19 @@ export const useStore = create<SwarmStore>((set, get) => ({
   },
 
   loadSpecs: async () => {
-    const { nodes } = await api.get<{ nodes: NodeSpec[] }>('/api/nodes')
+    const data = await api.get<{ nodes: NodeSpec[]; load_errors: NodeLoadError[] }>('/api/nodes')
     const byType: Record<string, NodeSpec> = {}
-    for (const spec of nodes) byType[spec.type] = spec
-    set({ specs: nodes, specsByType: byType })
+    for (const spec of data.nodes) byType[spec.type] = spec
+    set({ specs: data.nodes, specsByType: byType, nodeLoadErrors: data.load_errors ?? [] })
+  },
+
+  reloadSpecs: async () => {
+    const data = await api.post<{ nodes: NodeSpec[]; load_errors: NodeLoadError[] }>(
+      '/api/nodes/reload',
+    )
+    const byType: Record<string, NodeSpec> = {}
+    for (const spec of data.nodes) byType[spec.type] = spec
+    set({ specs: data.nodes, specsByType: byType, nodeLoadErrors: data.load_errors ?? [] })
   },
 
   setWorkflow: (id, name) => set({ workflowId: id, workflowName: name }),
@@ -57,11 +69,23 @@ export const useStore = create<SwarmStore>((set, get) => ({
     get().ws?.close()
     set({ run: { ...idleRun, status: 'running', runId: null } })
 
-    const { run_id } = await api.post<{ run_id: string }>('/api/run', {
-      definition,
-      workflow_id: workflowId,
-      workflow_name: workflowName,
-    })
+    let run_id: string
+    try {
+      ;({ run_id } = await api.post<{ run_id: string }>('/api/run', {
+        definition,
+        workflow_id: workflowId,
+        workflow_name: workflowName,
+      }))
+    } catch (e) {
+      set({
+        run: {
+          ...idleRun,
+          status: 'error',
+          error: e instanceof Error ? e.message : 'Could not start the run',
+        },
+      })
+      return
+    }
 
     const ws = new WebSocket(runEventsUrl(run_id))
     set({ ws, run: { ...idleRun, status: 'running', runId: run_id } })

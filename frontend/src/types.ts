@@ -20,6 +20,19 @@ export interface NodeSpec {
   inputs: string[]
   outputs: string[]
   config_fields: ConfigField[]
+  source?: 'builtin' | 'custom'
+}
+
+export interface NodeLoadError {
+  file: string
+  error: string
+}
+
+export interface SwarmNodeData {
+  kind: string
+  label?: string
+  config: Record<string, unknown>
+  [key: string]: unknown
 }
 
 export interface User {

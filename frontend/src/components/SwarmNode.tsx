@@ -1,14 +1,8 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { AlertCircle, Check, Minus } from 'lucide-react'
 import { useStore } from '../store'
+import type { SwarmNodeData } from '../types'
 import NodeIcon from './NodeIcon'
-
-export interface SwarmNodeData {
-  kind: string
-  label?: string
-  config: Record<string, unknown>
-  [key: string]: unknown
-}
 
 function StatusBadge({ nodeId }: { nodeId: string }) {
   const state = useStore((s) => s.run.nodeStates[nodeId])

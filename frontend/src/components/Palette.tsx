@@ -1,4 +1,5 @@
-import { DragEvent } from 'react'
+import { RefreshCw } from 'lucide-react'
+import { DragEvent, useState } from 'react'
 import { useStore } from '../store'
 import type { NodeSpec } from '../types'
 import NodeIcon from './NodeIcon'
@@ -13,8 +14,11 @@ function PaletteItem({ spec }: { spec: NodeSpec }) {
       <div className="node-icon" style={{ background: spec.color }}>
         <NodeIcon name={spec.icon} size={14} />
       </div>
-      <div>
-        <div className="palette-item-name">{spec.name}</div>
+      <div className="palette-item-text">
+        <div className="palette-item-name">
+          {spec.name}
+          {spec.source === 'custom' && <span className="badge-custom">custom</span>}
+        </div>
         <div className="palette-item-desc">{spec.description}</div>
       </div>
     </div>
@@ -23,6 +27,19 @@ function PaletteItem({ spec }: { spec: NodeSpec }) {
 
 export default function Palette() {
   const specs = useStore((s) => s.specs)
+  const loadErrors = useStore((s) => s.nodeLoadErrors)
+  const reloadSpecs = useStore((s) => s.reloadSpecs)
+  const [reloading, setReloading] = useState(false)
+
+  async function handleReload() {
+    setReloading(true)
+    try {
+      await reloadSpecs()
+    } finally {
+      setReloading(false)
+    }
+  }
+
   const categories: Record<string, NodeSpec[]> = {}
   for (const spec of specs) {
     ;(categories[spec.category] ??= []).push(spec)
@@ -30,7 +47,28 @@ export default function Palette() {
 
   return (
     <aside className="palette">
-      <div className="palette-hint">Drag nodes onto the canvas</div>
+      <div className="palette-header">
+        <span className="palette-hint">Drag nodes onto the canvas</span>
+        <button
+          className="btn btn-icon"
+          title="Re-scan the nodes/ folder for drop-in node files"
+          onClick={() => void handleReload()}
+          disabled={reloading}
+        >
+          <RefreshCw size={14} className={reloading ? 'spin' : ''} />
+        </button>
+      </div>
+
+      {loadErrors.length > 0 && (
+        <div className="palette-errors">
+          {loadErrors.map((e) => (
+            <div key={e.file} className="palette-error">
+              <strong>{e.file}</strong> {e.error}
+            </div>
+          ))}
+        </div>
+      )}
+
       {Object.entries(categories).map(([category, items]) => (
         <div key={category} className="palette-group">
           <div className="palette-category">{category}</div>

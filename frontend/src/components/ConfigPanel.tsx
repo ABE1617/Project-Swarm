@@ -1,8 +1,7 @@
 import type { Node } from '@xyflow/react'
 import { Trash2 } from 'lucide-react'
 import { useStore } from '../store'
-import type { ConfigField } from '../types'
-import type { SwarmNodeData } from './SwarmNode'
+import type { ConfigField, SwarmNodeData } from '../types'
 
 interface Props {
   node: Node<SwarmNodeData> | null
