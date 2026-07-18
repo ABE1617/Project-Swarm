@@ -6,8 +6,8 @@ backend/instance/
 instance/
 node_modules/
 frontend/dist/
-data/
-nodes/
+/data/
+/nodes/
 *.log
 *.db
 .env
