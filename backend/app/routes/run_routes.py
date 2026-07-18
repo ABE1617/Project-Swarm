@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user, get_user_from_token
 from app.config import SESSION_COOKIE
 from app.db import SessionLocal, get_db
+from app.engine.executor import slice_to_node
 from app.engine.registry import get_registry
 from app.engine.runs import manager
+from app.engine.types import WorkflowError
 from app.models import Execution, User
 from app.schemas import RunRequest
 
@@ -17,8 +19,14 @@ router = APIRouter(tags=["runs"])
 
 @router.post("/api/run")
 async def start_run(body: RunRequest, user: User = Depends(get_current_user)):
+    definition = body.definition.to_engine()
+    if body.target_node_id:
+        try:
+            definition = slice_to_node(definition, body.target_node_id)
+        except WorkflowError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
     run = manager.start(
-        definition=body.definition.to_engine(),
+        definition=definition,
         registry=get_registry(),
         user_id=user.id,
         workflow_id=body.workflow_id,

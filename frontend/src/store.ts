@@ -29,7 +29,12 @@ interface SwarmStore {
   loadSpecs: () => Promise<void>
   reloadSpecs: () => Promise<void>
   setWorkflow: (id: number | null, name: string) => void
-  startRun: (definition: WorkflowDefinition, workflowId: number | null, workflowName: string) => Promise<void>
+  startRun: (
+    definition: WorkflowDefinition,
+    workflowId: number | null,
+    workflowName: string,
+    targetNodeId?: string,
+  ) => Promise<void>
   cancelRun: () => Promise<void>
   resetRun: () => void
 }
@@ -90,7 +95,7 @@ export const useStore = create<SwarmStore>((set, get) => ({
 
   setWorkflow: (id, name) => set({ workflowId: id, workflowName: name }),
 
-  startRun: async (definition, workflowId, workflowName) => {
+  startRun: async (definition, workflowId, workflowName, targetNodeId) => {
     get().ws?.close()
     set({ run: { ...idleRun, status: 'running', runId: null } })
 
@@ -100,6 +105,7 @@ export const useStore = create<SwarmStore>((set, get) => ({
         definition,
         workflow_id: workflowId,
         workflow_name: workflowName,
+        target_node_id: targetNodeId ?? null,
       }))
     } catch (e) {
       set({

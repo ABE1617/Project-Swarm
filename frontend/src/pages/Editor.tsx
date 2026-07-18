@@ -193,6 +193,13 @@ function EditorInner() {
     await startRun(serialize(), workflowId, workflowName)
   }, [startRun, serialize, workflowId, workflowName])
 
+  const handleTestNode = useCallback(
+    (nodeId: string) => {
+      void startRun(serialize(), workflowId, workflowName, nodeId)
+    },
+    [startRun, serialize, workflowId, workflowName],
+  )
+
   const handleExport = useCallback(() => {
     const payload = { name: workflowName, definition: serialize() }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -266,9 +273,12 @@ function EditorInner() {
         </div>
         <ConfigPanel
           node={selectedNode}
+          edges={edges}
+          allNodes={nodes}
           onConfigChange={updateNodeConfig}
           onLabelChange={updateNodeLabel}
           onDelete={deleteNode}
+          onTestNode={handleTestNode}
         />
       </div>
     </div>

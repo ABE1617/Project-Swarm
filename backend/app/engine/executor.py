@@ -50,6 +50,37 @@ class _EdgeState:
         self.data: Any = None
 
 
+def slice_to_node(definition: dict, target: str) -> dict:
+    """Reduce a definition to the target node plus everything upstream of it.
+
+    Powers 'Test node': run a node with real data without executing the
+    rest of the workflow.
+    """
+    nodes = definition.get("nodes", [])
+    if target not in {n.get("id") for n in nodes}:
+        raise WorkflowError(f"Node '{target}' is not part of the workflow")
+    edges = definition.get("edges", [])
+
+    parents: dict[str, list[str]] = {}
+    for e in edges:
+        parents.setdefault(e.get("target"), []).append(e.get("source"))
+
+    keep: set[str] = set()
+    stack = [target]
+    while stack:
+        nid = stack.pop()
+        if nid in keep:
+            continue
+        keep.add(nid)
+        stack.extend(parents.get(nid, []))
+
+    return {
+        **definition,
+        "nodes": [n for n in nodes if n.get("id") in keep],
+        "edges": [e for e in edges if e.get("source") in keep and e.get("target") in keep],
+    }
+
+
 def _detect_cycle(nodes: dict, adj: dict[str, list[str]]) -> None:
     WHITE, GRAY, BLACK = 0, 1, 2
     color = {nid: WHITE for nid in nodes}

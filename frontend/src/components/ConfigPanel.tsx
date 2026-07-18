@@ -1,15 +1,25 @@
-import type { Node } from '@xyflow/react'
-import { Trash2 } from 'lucide-react'
-import { useEffect } from 'react'
+import type { Edge, Node } from '@xyflow/react'
+import { FlaskConical, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { fieldDefaults, fieldVisible } from '../lib/fields'
+import { ancestorsOf, directSources, insertAtCursor } from '../lib/mapping'
 import { useStore } from '../store'
 import type { ConfigField, SwarmNodeData } from '../types'
+import JsonTree from './JsonTree'
 
 interface Props {
   node: Node<SwarmNodeData> | null
+  edges: Edge[]
+  allNodes: Node<SwarmNodeData>[]
   onConfigChange: (nodeId: string, patch: Record<string, unknown>) => void
   onLabelChange: (nodeId: string, label: string) => void
   onDelete: (nodeId: string) => void
+  onTestNode: (nodeId: string) => void
+}
+
+interface FocusedField {
+  key: string
+  element: HTMLInputElement | HTMLTextAreaElement
 }
 
 function jsonHint(value: unknown): string | null {
@@ -141,9 +151,94 @@ function FieldInput({
   }
 }
 
-export default function ConfigPanel({ node, onConfigChange, onLabelChange, onDelete }: Props) {
+function InputDataPanel({
+  node,
+  edges,
+  allNodes,
+  onPick,
+  onTestNode,
+}: {
+  node: Node<SwarmNodeData>
+  edges: Edge[]
+  allNodes: Node<SwarmNodeData>[]
+  onPick: (template: string) => void
+  onTestNode: (nodeId: string) => void
+}) {
+  const nodeStates = useStore((s) => s.run.nodeStates)
+  const specsByType = useStore((s) => s.specsByType)
+  const runStatus = useStore((s) => s.run.status)
+
+  const directs = directSources(edges, node.id)
+  const ancestors = ancestorsOf(edges, node.id)
+  const withData = ancestors.filter((id) => nodeStates[id]?.output !== undefined)
+
+  if (ancestors.length === 0) return null
+
+  const nameOf = (id: string) => {
+    const n = allNodes.find((candidate) => candidate.id === id)
+    if (!n) return id
+    return n.data.label || specsByType[n.data.kind]?.name || id
+  }
+
+  return (
+    <div className="input-data">
+      <div className="input-data-header">
+        <span>Input data</span>
+        <button
+          className="btn btn-small"
+          title="Run this node and everything before it"
+          disabled={runStatus === 'running'}
+          onClick={() => onTestNode(node.id)}
+        >
+          <FlaskConical size={12} /> Test node
+        </button>
+      </div>
+      {withData.length === 0 ? (
+        <p className="input-data-empty">
+          Run the workflow (or Test node) to see the data coming into this node. Then click any
+          field to insert its reference.
+        </p>
+      ) : (
+        <>
+          <p className="input-data-hint">
+            Click a field to insert its {'{{ }}'} reference into the focused parameter.
+          </p>
+          {withData.map((id) => (
+            <div key={id} className="input-source">
+              <div className="input-source-name">
+                {nameOf(id)} <code>{id}</code>
+              </div>
+              <JsonTree
+                data={nodeStates[id].output}
+                root={directs.length === 1 && id === directs[0] ? 'input' : id}
+                onPick={onPick}
+              />
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+export default function ConfigPanel({
+  node,
+  edges,
+  allNodes,
+  onConfigChange,
+  onLabelChange,
+  onDelete,
+  onTestNode,
+}: Props) {
   const spec = useStore((s) => (node ? s.specsByType[node.data.kind] : undefined))
   const runState = useStore((s) => (node ? s.run.nodeStates[node.id] : undefined))
+  const setNotice = useStore((s) => s.setNotice)
+  const focusedField = useRef<FocusedField | null>(null)
+  const [, forceRender] = useState(0)
+
+  useEffect(() => {
+    focusedField.current = null
+  }, [node?.id])
 
   if (!node || !spec) {
     return (
@@ -161,6 +256,29 @@ export default function ConfigPanel({ node, onConfigChange, onLabelChange, onDel
 
   const config = node.data.config ?? {}
 
+  function rememberFocus(event: React.FocusEvent) {
+    const target = event.target as HTMLElement
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+      if (target.type === 'checkbox' || target.type === 'password') return
+      const holder = target.closest('[data-field-key]')
+      const key = holder?.getAttribute('data-field-key')
+      if (key) focusedField.current = { key, element: target }
+    }
+  }
+
+  function handlePick(template: string) {
+    const focused = focusedField.current
+    if (focused && node) {
+      const current = String(config[focused.key] ?? '')
+      const next = insertAtCursor(focused.element, current, template)
+      onConfigChange(node.id, { [focused.key]: next })
+      forceRender((n) => n + 1)
+    } else {
+      void navigator.clipboard.writeText(template)
+      setNotice('Reference copied - click into a field first to insert it directly')
+    }
+  }
+
   return (
     <aside className="config-panel">
       <div className="config-header">
@@ -177,29 +295,43 @@ export default function ConfigPanel({ node, onConfigChange, onLabelChange, onDel
       </div>
       <p className="config-desc">{spec.description}</p>
 
-      <label className="config-field">
-        <span>Label</span>
-        <input
-          value={node.data.label ?? ''}
-          placeholder={spec.name}
-          onChange={(e) => onLabelChange(node.id, e.target.value)}
-        />
-      </label>
+      <InputDataPanel
+        node={node}
+        edges={edges}
+        allNodes={allNodes}
+        onPick={handlePick}
+        onTestNode={onTestNode}
+      />
 
-      {spec.config_fields.filter((f) => fieldVisible(f, config, fieldDefaults(spec))).map((field) => (
-        <label key={field.key} className="config-field">
-          <span>
-            {field.label}
-            {field.required && <em className="required">*</em>}
-          </span>
-          <FieldInput
-            field={field}
-            value={config[field.key]}
-            onChange={(value) => onConfigChange(node.id, { [field.key]: value })}
+      <div onFocusCapture={rememberFocus}>
+        <label className="config-field">
+          <span>Label</span>
+          <input
+            value={node.data.label ?? ''}
+            placeholder={spec.name}
+            onChange={(e) => onLabelChange(node.id, e.target.value)}
           />
-          {field.help && field.type !== 'boolean' && <div className="field-help">{field.help}</div>}
         </label>
-      ))}
+
+        {spec.config_fields
+          .filter((f) => fieldVisible(f, config, fieldDefaults(spec)))
+          .map((field) => (
+            <label key={field.key} className="config-field" data-field-key={field.key}>
+              <span>
+                {field.label}
+                {field.required && <em className="required">*</em>}
+              </span>
+              <FieldInput
+                field={field}
+                value={config[field.key]}
+                onChange={(value) => onConfigChange(node.id, { [field.key]: value })}
+              />
+              {field.help && field.type !== 'boolean' && (
+                <div className="field-help">{field.help}</div>
+              )}
+            </label>
+          ))}
+      </div>
 
       {runState && runState.status !== 'pending' && (
         <div className={`config-run-result ${runState.status}`}>

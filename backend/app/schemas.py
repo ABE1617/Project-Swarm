@@ -67,3 +67,5 @@ class RunRequest(BaseModel):
     workflow_id: int | None = None
     workflow_name: str = Field(default="", max_length=128)
     input: Any = None
+    target_node_id: str | None = Field(default=None, max_length=128)
+    """When set, only this node and its ancestors execute ('Test node')."""
