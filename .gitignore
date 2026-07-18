@@ -9,6 +9,7 @@ frontend/dist/
 data/
 nodes/
 *.log
+*.db
 .env
 .DS_Store
 *.tsbuildinfo
