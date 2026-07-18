@@ -1007,6 +1007,19 @@ textarea.mono {
   letter-spacing: 0.5px;
 }
 
+/* rubber-band selection box + group rect */
+.react-flow__selection {
+  background: rgba(255, 178, 36, 0.05);
+  border: 1px dashed var(--honey-deep);
+  border-radius: 4px;
+}
+
+.react-flow__nodesselection-rect {
+  background: rgba(255, 178, 36, 0.04);
+  border: 1px dashed var(--honey-deep);
+  border-radius: 6px;
+}
+
 /* ── config panel ───────────────────────────────────────────── */
 
 .config-panel {

@@ -6,6 +6,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  SelectionMode,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -162,7 +163,10 @@ function EditorInner() {
     }
   }, [nodes, edges, workflowName, doSave])
 
-  const selectedNode = useMemo(() => nodes.find((n) => n.selected) ?? null, [nodes])
+  const selectedNode = useMemo(() => {
+    const selected = nodes.filter((n) => n.selected)
+    return selected.length === 1 ? selected[0] : null
+  }, [nodes])
   const hasTrigger = useMemo(
     () => nodes.some((n) => specsByType[n.data.kind]?.inputs.length === 0),
     [nodes, specsByType],
@@ -318,6 +322,11 @@ function EditorInner() {
             onDragOver={onDragOver}
             defaultEdgeOptions={defaultEdgeOptions}
             deleteKeyCode={['Backspace', 'Delete']}
+            panOnDrag={[1, 2]}
+            selectionOnDrag
+            selectionMode={SelectionMode.Partial}
+            panOnScroll
+            onPaneContextMenu={(e) => e.preventDefault()}
             fitView
             fitViewOptions={{ padding: 0.3, maxZoom: 0.9 }}
             proOptions={{ hideAttribution: true }}
