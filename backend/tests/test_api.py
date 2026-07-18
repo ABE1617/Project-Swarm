@@ -84,6 +84,39 @@ def test_me_returns_user(logged_in):
     assert data["user"]["username"] == "tester"
 
 
+def test_change_password_requires_current(logged_in):
+    response = logged_in.post(
+        "/api/auth/change-password",
+        json={"current_password": "wrong-one", "new_password": "newsecret1"},
+    )
+    assert response.status_code == 401
+
+
+def test_change_password_roundtrip(logged_in):
+    assert (
+        logged_in.post(
+            "/api/auth/change-password",
+            json={"current_password": "secret123", "new_password": "newsecret1"},
+        ).status_code
+        == 200
+    )
+    fresh = TestClient(app)
+    assert (
+        fresh.post(
+            "/api/auth/login", json={"username": "tester", "password": "newsecret1"}
+        ).status_code
+        == 200
+    )
+    # restore for the rest of the module
+    assert (
+        logged_in.post(
+            "/api/auth/change-password",
+            json={"current_password": "newsecret1", "new_password": "secret123"},
+        ).status_code
+        == 200
+    )
+
+
 # ---------- nodes ----------
 
 

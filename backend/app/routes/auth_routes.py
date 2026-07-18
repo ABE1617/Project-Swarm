@@ -11,7 +11,7 @@ from app.auth import (
 )
 from app.db import get_db
 from app.models import User
-from app.schemas import LoginRequest, RegisterRequest, UserOut
+from app.schemas import ChangePasswordRequest, LoginRequest, RegisterRequest, UserOut
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -54,3 +54,17 @@ def logout(response: Response):
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
     return {"user": UserOut.model_validate(user, from_attributes=True).model_dump()}
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    user.password_hash = hash_password(body.new_password)
+    db.add(user)
+    db.commit()
+    return {"ok": True}
