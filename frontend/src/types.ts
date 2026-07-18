@@ -103,4 +103,5 @@ export interface WorkflowDefinition {
     sourceHandle?: string
     targetHandle?: string
   }>
+  viewport?: { x: number; y: number; zoom: number }
 }

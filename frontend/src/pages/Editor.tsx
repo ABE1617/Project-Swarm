@@ -61,7 +61,8 @@ function EditorInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(freshNodes())
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
-  const { screenToFlowPosition, fitView } = useReactFlow()
+  const [viewportTick, setViewportTick] = useState(0)
+  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow()
   const idCounter = useRef(2)
   const loadingRef = useRef(true)
   const lastSavedRef = useRef('')
@@ -78,10 +79,16 @@ function EditorInner() {
       const { nodes: flowNodes, edges: flowEdges } = deserializeFlow(definition)
       setNodes(flowNodes)
       setEdges(flowEdges)
-      window.setTimeout(() => void fitView({ padding: 0.3, maxZoom: 0.9 }), 50)
+      if (definition.viewport) {
+        // restore exactly where the user left the canvas - no auto-framing
+        void setViewport(definition.viewport)
+      } else {
+        // only workflows saved before viewports existed get a one-time fit
+        window.setTimeout(() => void fitView({ padding: 0.3, maxZoom: 1 }), 50)
+      }
       return { flowNodes, flowEdges }
     },
-    [setNodes, setEdges, fitView],
+    [setNodes, setEdges, setViewport, fitView],
   )
 
   // Load the routed workflow (or a fresh canvas). Skips the reload that
@@ -102,7 +109,10 @@ function EditorInner() {
           const { flowNodes, flowEdges } = applyDefinition(workflow.definition)
           lastSavedRef.current = JSON.stringify({
             name: workflow.name,
-            definition: serializeFlow(flowNodes, flowEdges),
+            definition: {
+              ...serializeFlow(flowNodes, flowEdges),
+              viewport: workflow.definition.viewport ?? getViewport(),
+            },
           })
           loadingRef.current = false
         })
@@ -116,7 +126,7 @@ function EditorInner() {
       setEdges([])
       lastSavedRef.current = JSON.stringify({
         name: 'Untitled workflow',
-        definition: serializeFlow(initial, []),
+        definition: { ...serializeFlow(initial, []), viewport: getViewport() },
       })
       loadingRef.current = false
     }
@@ -148,12 +158,13 @@ function EditorInner() {
     [navigate, setWorkflow],
   )
 
-  // Autosave on any real change (selection flags are not serialized).
+  // Autosave on any real change, including pan/zoom (viewportTick bumps on
+  // move end). Selection flags are not serialized.
   useEffect(() => {
     if (loadingRef.current) return
     const payload = JSON.stringify({
       name: workflowName || 'Untitled workflow',
-      definition: serializeFlow(nodes, edges),
+      definition: { ...serializeFlow(nodes, edges), viewport: getViewport() },
     })
     if (payload === lastSavedRef.current) return
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
@@ -161,7 +172,7 @@ function EditorInner() {
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
     }
-  }, [nodes, edges, workflowName, doSave])
+  }, [nodes, edges, workflowName, viewportTick, doSave, getViewport])
 
   const selectedNode = useMemo(() => {
     const selected = nodes.filter((n) => n.selected)
@@ -327,8 +338,7 @@ function EditorInner() {
             selectionMode={SelectionMode.Partial}
             panOnScroll
             onPaneContextMenu={(e) => e.preventDefault()}
-            fitView
-            fitViewOptions={{ padding: 0.3, maxZoom: 0.9 }}
+            onMoveEnd={() => setViewportTick((t) => t + 1)}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Dots} gap={26} size={1.1} color="#2b251c" />
