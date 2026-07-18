@@ -49,11 +49,7 @@ function CredentialSelect({
   }, [credentials.length, loadCredentials])
 
   if (credentials.length === 0) {
-    return (
-      <div className="field-help">
-        No Google credential yet - create one via the Credentials button in the toolbar.
-      </div>
-    )
+    return <div className="field-none">None yet - add one under Credentials</div>
   }
   return (
     <select value={String(value ?? '')} onChange={(e) => onChange(Number(e.target.value) || '')}>
@@ -100,7 +96,6 @@ function FieldInput({
             checked={Boolean(value ?? field.default ?? false)}
             onChange={(e) => onChange(e.target.checked)}
           />
-          <span>{field.help ?? 'Enabled'}</span>
         </label>
       )
     case 'number':
@@ -184,50 +179,31 @@ function InputDataPanel({
   return (
     <div className="input-data">
       <div className="input-data-header">
-        <span>Input data</span>
-        {withData.length > 0 && (
-          <button
-            className="btn btn-small"
-            title="Run everything before this node again to refresh its input data"
-            disabled={runStatus === 'running'}
-            onClick={() => onRunPrevious(node.id)}
-          >
-            <Play size={11} /> Execute previous nodes
-          </button>
-        )}
+        <span>Input</span>
+        <button
+          className="btn btn-small"
+          title="Run the nodes before this one to load their data"
+          disabled={runStatus === 'running'}
+          onClick={() => onRunPrevious(node.id)}
+        >
+          <Play size={11} /> Execute previous nodes
+        </button>
       </div>
       {withData.length === 0 ? (
-        <div className="input-data-cta">
-          <p className="input-data-empty">
-            No input data yet. Execute the previous nodes to see what data arrives here - then
-            click any field to map it into a parameter.
-          </p>
-          <button
-            className="btn btn-primary btn-small"
-            disabled={runStatus === 'running'}
-            onClick={() => onRunPrevious(node.id)}
-          >
-            <Play size={12} /> Execute previous nodes
-          </button>
-        </div>
+        <div className="input-data-none">No data yet</div>
       ) : (
-        <>
-          <p className="input-data-hint">
-            Click a field to insert its {'{{ }}'} reference into the focused parameter.
-          </p>
-          {withData.map((id) => (
-            <div key={id} className="input-source">
-              <div className="input-source-name">
-                {nameOf(id)} <code>{id}</code>
-              </div>
-              <JsonTree
-                data={nodeStates[id].output}
-                root={directs.length === 1 && id === directs[0] ? 'input' : id}
-                onPick={onPick}
-              />
+        withData.map((id) => (
+          <div key={id} className="input-source">
+            <div className="input-source-name">
+              {nameOf(id)} <code>{id}</code>
             </div>
-          ))}
-        </>
+            <JsonTree
+              data={nodeStates[id].output}
+              root={directs.length === 1 && id === directs[0] ? 'input' : id}
+              onPick={onPick}
+            />
+          </div>
+        ))
       )}
     </div>
   )
@@ -257,13 +233,7 @@ export default function ConfigPanel({
   if (!node || !spec) {
     return (
       <aside className="config-panel empty">
-        <div className="config-empty">
-          <p>Select a node to configure it.</p>
-          <p className="hint">
-            Reference upstream data with templates: <code>{'{{ input.field }}'}</code> or{' '}
-            <code>{'{{ node_id.field }}'}</code>
-          </p>
-        </div>
+        <div className="config-empty">Select a node</div>
       </aside>
     )
   }
@@ -305,9 +275,8 @@ export default function ConfigPanel({
         </button>
       </div>
       <div className="config-id">
-        id: <code>{node.id}</code>
+        <code>{node.id}</code>
       </div>
-      <p className="config-desc">{spec.description}</p>
 
       <InputDataPanel
         node={node}
@@ -331,7 +300,7 @@ export default function ConfigPanel({
           .filter((f) => fieldVisible(f, config, fieldDefaults(spec)))
           .map((field) => (
             <label key={field.key} className="config-field" data-field-key={field.key}>
-              <span>
+              <span className={field.help ? 'has-help' : ''} title={field.help}>
                 {field.label}
                 {field.required && <em className="required">*</em>}
               </span>
@@ -340,9 +309,6 @@ export default function ConfigPanel({
                 value={config[field.key]}
                 onChange={(value) => onConfigChange(node.id, { [field.key]: value })}
               />
-              {field.help && field.type !== 'boolean' && (
-                <div className="field-help">{field.help}</div>
-              )}
             </label>
           ))}
       </div>
@@ -371,15 +337,13 @@ export default function ConfigPanel({
         {runState && runState.status !== 'pending' ? (
           <>
             {runState.error && <pre className="run-error-text">{runState.error}</pre>}
-            {runState.reason && <div className="field-help">{runState.reason}</div>}
+            {runState.reason && <div className="field-none">{runState.reason}</div>}
             {runState.output !== undefined && (
               <pre className="run-output">{JSON.stringify(runState.output, null, 2)}</pre>
             )}
           </>
         ) : (
-          <p className="input-data-empty">
-            Not executed yet. Execute step runs this node with fresh data from the previous nodes.
-          </p>
+          <div className="input-data-none">Not executed yet</div>
         )}
       </div>
     </aside>
