@@ -18,8 +18,12 @@ export function fieldVisible(
   return Object.entries(field.showIf).every(([key, expected]) => {
     let actual = config[key]
     if (actual === undefined || actual === null || actual === '') actual = defaults[key]
-    if (Array.isArray(expected)) return expected.map(String).includes(String(actual))
-    return String(actual) === String(expected)
+    // lowercase both sides so booleans compare consistently with the Python mirror
+    const actualStr = String(actual).toLowerCase()
+    if (Array.isArray(expected)) {
+      return expected.map((v) => String(v).toLowerCase()).includes(actualStr)
+    }
+    return actualStr === String(expected).toLowerCase()
   })
 }
 

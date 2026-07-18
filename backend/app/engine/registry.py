@@ -30,7 +30,15 @@ from app import config
 
 logger = logging.getLogger(__name__)
 
-CATEGORY_ORDER = {"Triggers": 0, "Logic": 1, "Data": 2, "AI": 3, "Actions": 4, "Files": 5}
+CATEGORY_ORDER = {
+    "Triggers": 0,
+    "Logic": 1,
+    "Data": 2,
+    "AI": 3,
+    "Actions": 4,
+    "Google": 5,
+    "Files": 6,
+}
 
 
 @dataclass

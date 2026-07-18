@@ -20,10 +20,12 @@ def field_visible(field: dict, config: dict, defaults: dict[str, Any]) -> bool:
         actual = config.get(key)
         if actual in (None, ""):
             actual = defaults.get(key)
+        # lowercase both sides so booleans compare consistently with the JS mirror
+        actual_str = str(actual).lower()
         if isinstance(expected, list):
-            if str(actual) not in [str(v) for v in expected]:
+            if actual_str not in [str(v).lower() for v in expected]:
                 return False
-        elif str(actual) != str(expected):
+        elif actual_str != str(expected).lower():
             return False
     return True
 
