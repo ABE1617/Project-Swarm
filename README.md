@@ -1,77 +1,114 @@
-# 🐝 Swarm – My Local, Scalable Automation Engine
+# 🐝 Swarm
 
-Welcome to **Swarm**, a project I built from the ground up as a fully local, modular automation engine using **Python**, **Flask**, **HTML/CSS/JS**, and **Bootstrap**. I was inspired by tools like [n8n](https://n8n.io), but I wanted more control, better local performance, and easier extensibility so I made my own XD
+A **local-first visual workflow automation engine** — build automations on an n8n-style drag-and-drop canvas, run them on your own machine, and extend the node library by dropping a single Python file.
 
----
-
-## 👋 What I Built
-
-I designed Swarm as a **node-based visual automation builder** just like n8n but made it more developer friendly and user friendly (somehow), easier to extend, and focused entirely on **local execution**.
-
-I implemented:
-
-- 🧠 A fully working **Execution Engine** in Python to parse and run workflows
-- ⚙️ A **modular Control Node system**, where each node is a Python file
-- 🧩 A web-based **drag-and-drop GUI**, mimicking the look and flow of n8n
-- 🧾 A JSON-based backend to save and run workflows
-- 🔑 API-configurable nodes for OpenAI, DeepSeek, Gmail, Google Sheets, Drive, etc.
+**v2 is a complete rewrite**: FastAPI backend with a branch-aware async execution engine, and a React + React Flow editor with live run status. No CDNs, no cloud — everything runs and stays local.
 
 ---
 
-## 🚀 Core Features I Added
+## What it does
 
-- ✅ Visual Workflow Builder (n8n-style canvas)
-- ✅ Modular Node System (`/Control Nodes/` folder)
-- ✅ Backend Worker Engine that processes JSON workflows
-- ✅ HTTP, HTTPS, Gmail, Google Sheets, and Drive integration
-- ✅ API Key authentication for third-party services
-- ✅ OpenAI & DeepSeek Node support
-- ✅ File Writer Node (Write to local disk)
-- ✅ JSON-based workflow storage and portability
-- ✅ Scalable architecture (easy to add new nodes)
+- **Visual editor** — drag nodes from the palette, wire them up, configure them in a side panel. Zoom, pan, minimap, import/export JSON.
+- **Real data flow** — reference upstream data anywhere with templates:
+  `{{ input.name }}`, `{{ http_request_1.body.items[0].title }}`, `{{ env.OPENAI_API_KEY }}`
+- **Real branching** — the **If** node routes down its `true`/`false` handle; the untaken branch (and everything after it) is skipped, not executed.
+- **Concurrent execution** — independent branches run in parallel; runs execute in the background with **live per-node status** streamed to the canvas over WebSocket.
+- **Run history** — every execution is persisted with statuses, outputs, and logs.
+- **Multi-user** — login/register with session auth (PBKDF2 hashing).
 
----
+## Node library (v2)
 
-## 🧩 Nodes I Implemented (v1.0)
+| Node | What it does |
+|---|---|
+| Manual Trigger | Starts the run, with an optional JSON payload |
+| HTTP Request | Call any API (headers, params, JSON/text body, basic error policy) |
+| If | Route to true/false branches (simple comparison or sandboxed expression) |
+| Set Variables | Set/merge fields onto the flowing data |
+| Transform | Pick/omit fields, build objects from templates, parse/stringify JSON |
+| LLM | OpenAI, DeepSeek, or any OpenAI-compatible endpoint (local Ollama works) |
+| Read / Write File | File I/O, sandboxed to the `data/` directory |
+| Delay | Non-blocking wait |
 
-| Node                 | Description                                  |
-|----------------------|----------------------------------------------|
-| HttpRequestNode      | Send GET/POST requests                       |
-| GmailSendNode        | Send emails using Gmail                      |
-| GoogleSheetsWriter   | Write rows to Google Sheets                  |
-| GoogleDriveUpload    | Upload files to Google Drive                 |
-| OpenAINode           | Use OpenAI API                               |
-| DeepSeekNode         | Talk to DeepSeek API                         |
-| WriteToFileNode      | Write data to a text file                    |
-| LoggerNode           | Output logs to console or file               |
-| JsonParserNode       | Parse JSON strings                           |
+## Quickstart
 
+Requirements: [uv](https://docs.astral.sh/uv/) and Node.js 18+.
 
----
+```bash
+# 1. Backend deps + tests
+cd backend
+uv sync
+uv run pytest          # 15 engine tests
 
-## 🤖 Why I Built This Instead of Using n8n
+# 2. Frontend build (one-time, or after UI changes)
+cd ../frontend
+npm install
+npm run build
 
-| Feature                   | n8n              | Swarm (My Version)            |
-|---------------------------|------------------|------------------------------ |
-| Fully Local               | ❌               | ✅ (My top priority)         |
-| Easily Add Python Nodes   | ❌ (TS-based)    | ✅ (Just add a `.py` file)   |
-| Frontend Simplicity       | ✅               | ✅ (Same look, simpler code) |
-| Backend Complexity        | 😵 (Heavy stack) | 😌 (Light Flask app )        |
-| Custom Execution Engine   | ❌               | ✅ (I love making my tools)  |
-| IoT & File Support        | Limited          | Built-in                      |
+# 3. Run — backend serves the built UI at http://localhost:8000
+cd ../backend
+uv run uvicorn app.main:app --port 8000
+```
 
-I wanted something light, personal, extensible, and fast. Swarm is exactly that.
+Open http://localhost:8000, register an account, and build.
 
----
+### Dev mode (hot reload)
 
-## 🔮 My Vision for Swarm
-I see this as more than just a personal tool. I want Swarm to be:
+```bash
+# terminal 1
+cd backend && uv run uvicorn app.main:app --port 8000 --reload
+# terminal 2
+cd frontend && npm run dev    # http://localhost:5173, proxies /api
+```
 
-### 💻 The go-to local-first automation platform
+## Writing your own node
 
-### 🔌 A sandbox for rapidly testing new APIs and data flows
+Drop a file in `backend/app/nodes/` — that's the whole integration:
 
-### 🤖 A backend engine for IoT devices, desktops, or automation agents
+```python
+from app.engine.types import NodeContext
 
-### 👩‍🔧 A tool developers can modify without touching dozens of files
+NODE_TYPE = "shout"
+NODE_NAME = "Shout"
+NODE_DESCRIPTION = "Uppercase a message"
+NODE_CATEGORY = "Data"
+NODE_COLOR = "#f43f5e"
+NODE_ICON = "box"
+NODE_INPUTS = ["in"]
+NODE_OUTPUTS = ["out"]
+CONFIG_FIELDS = [
+    {"key": "message", "label": "Message", "type": "string", "required": True,
+     "placeholder": "{{ input.text }}"},
+]
 
+async def run(ctx: NodeContext):
+    return {"shouted": str(ctx.config["message"]).upper()}
+```
+
+Restart the server and it appears in the palette. Config values arrive with `{{ }}` templates already resolved. Return a dict (output data), or `NodeOutput(data, handle="true")` to route between multiple output handles. Plain `def run` also works (runs in a worker thread).
+
+## Configuration (env vars)
+
+| Variable | Purpose |
+|---|---|
+| `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` | Default LLM keys (or set per-node) |
+| `SWARM_FILES_DIR` | File-node sandbox directory (default `./data`) |
+| `SWARM_ALLOW_ANY_PATH=1` | Disable the file sandbox |
+| `SWARM_SECRET` | Session signing key (auto-generated otherwise) |
+| `SWARM_DATABASE_URL` | Defaults to SQLite in `backend/instance/` |
+
+## Architecture
+
+```
+frontend/            React + TypeScript + React Flow (Vite)
+backend/
+  app/main.py        FastAPI app, serves API + built frontend
+  app/engine/
+    executor.py      branch-aware concurrent DAG executor
+    templating.py    {{ }} resolver + sandboxed expressions
+    registry.py      auto-discovers node modules
+    runs.py          background runs, WS event streams, history
+  app/nodes/         one .py file per node type
+  tests/             engine test suite
+```
+
+Design notes: no `eval()` anywhere (expressions go through `simpleeval`), file nodes are path-sandboxed, `{{ env.* }}` only exposes allow-listed variable names, runs are capped by per-node timeouts, and workflow definitions are validated (unknown types, cycles, missing triggers) before execution.
