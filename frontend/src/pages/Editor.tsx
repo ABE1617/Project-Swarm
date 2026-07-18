@@ -1,5 +1,7 @@
 import {
   addEdge,
+  Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   ReactFlow,
@@ -230,6 +232,7 @@ function EditorInner() {
             fitView
             proOptions={{ hideAttribution: true }}
           >
+            <Background variant={BackgroundVariant.Dots} gap={26} size={1.1} color="#2b251c" />
             <Controls />
             <MiniMap
               pannable

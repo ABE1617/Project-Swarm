@@ -337,8 +337,6 @@ textarea.mono {
   position: relative;
   min-width: 0;
   background-color: var(--bg);
-  background-image: var(--hex-lattice);
-  background-size: 44px 77px;
 }
 
 /* ── toolbar ────────────────────────────────────────────────── */
@@ -514,23 +512,12 @@ textarea.mono {
 }
 
 .palette-category {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.3px;
   color: var(--ink-faint);
   padding: 0 4px 6px;
-}
-
-.palette-category::before {
-  content: '';
-  width: 7px;
-  height: 8px;
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-  background: var(--honey-deep);
 }
 
 .palette-item {
@@ -664,14 +651,15 @@ textarea.mono {
   margin-top: 2px;
 }
 
-/* status badge — hexagonal, the run's seal */
+/* status badge */
 .node-status {
   position: absolute;
-  top: -9px;
+  top: -8px;
   right: -8px;
-  width: 19px;
-  height: 21px;
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -695,13 +683,12 @@ textarea.mono {
   background: var(--overlay);
 }
 
-/* ports — hex nuts */
+/* ports */
 .swarm-node .react-flow__handle {
-  width: 11px;
-  height: 13px;
-  border: none;
-  border-radius: 0;
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
   background: var(--ink-faint);
   transition: background 0.12s;
 }
