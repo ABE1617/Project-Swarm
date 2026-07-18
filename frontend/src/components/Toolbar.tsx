@@ -4,6 +4,7 @@ import { api } from '../api'
 import { useStore } from '../store'
 import type { WorkflowMeta } from '../types'
 import Logo from './Logo'
+import RunPanel from './RunPanel'
 
 interface Props {
   onSave: () => Promise<void>
@@ -144,6 +145,8 @@ export default function Toolbar({ onSave, onRun, onNew, onLoad, onExport, onImpo
       />
 
       <span className="flex-spacer" />
+
+      <RunPanel />
 
       <button
         className="btn btn-primary"

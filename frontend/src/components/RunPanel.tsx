@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Square } from 'lucide-react'
+import { Square } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 
@@ -13,16 +13,12 @@ const STATUS_LABEL: Record<string, string> = {
 export default function RunPanel() {
   const run = useStore((s) => s.run)
   const cancelRun = useStore((s) => s.cancelRun)
-  const [expanded, setExpanded] = useState(false)
+  const [open, setOpen] = useState(false)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (run.status === 'running' && run.logs.length > 0) setExpanded(true)
-  }, [run.status])
-
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [run.logs.length])
+    if (open) logsEndRef.current?.scrollIntoView({ block: 'end' })
+  }, [run.logs.length, open])
 
   const counts = Object.values(run.nodeStates).reduce(
     (acc, s) => {
@@ -32,42 +28,54 @@ export default function RunPanel() {
     {} as Record<string, number>,
   )
 
+  const summary =
+    run.status === 'idle'
+      ? ''
+      : [
+          counts.success ? `${counts.success} ok` : '',
+          counts.error ? `${counts.error} failed` : '',
+          counts.skipped ? `${counts.skipped} skipped` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+
   return (
-    <div className={`run-panel ${expanded ? 'expanded' : ''}`}>
-      <div className="run-panel-bar" onClick={() => setExpanded(!expanded)}>
-        <span className={`run-chip ${run.status}`}>{STATUS_LABEL[run.status]}</span>
-        {run.status !== 'idle' && (
-          <span className="run-counts">
-            {counts.success ? `${counts.success} ok` : ''}
-            {counts.error ? ` · ${counts.error} failed` : ''}
-            {counts.skipped ? ` · ${counts.skipped} skipped` : ''}
-          </span>
-        )}
-        {run.error && <span className="run-error-inline">{run.error}</span>}
-        <span className="flex-spacer" />
-        {run.status === 'running' && (
-          <button
-            className="btn btn-small danger"
-            onClick={(e) => {
-              e.stopPropagation()
-              void cancelRun()
-            }}
-          >
-            <Square size={12} /> Stop
-          </button>
-        )}
-        <button className="btn btn-icon">{expanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}</button>
-      </div>
-      {expanded && (
-        <div className="run-logs">
-          {run.logs.length === 0 && <div className="log-line muted">No logs yet.</div>}
-          {run.logs.map((log, i) => (
-            <div key={i} className={`log-line ${log.level}`}>
-              <span className="log-node">{log.node_id ?? '—'}</span>
-              <span>{log.message}</span>
-            </div>
-          ))}
-          <div ref={logsEndRef} />
+    <div
+      className="run-menu"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <span className={`run-chip ${run.status}`}>{STATUS_LABEL[run.status]}</span>
+
+      {open && (
+        <div className="run-dropdown">
+          <div className="run-dropdown-header">
+            <span className={`run-chip ${run.status}`}>{STATUS_LABEL[run.status]}</span>
+            {summary && <span className="run-counts">{summary}</span>}
+            {run.error && <span className="run-error-inline">{run.error}</span>}
+            <span className="flex-spacer" />
+            {run.status === 'running' && (
+              <button className="btn btn-small danger" onClick={() => void cancelRun()}>
+                <Square size={12} /> Stop
+              </button>
+            )}
+          </div>
+          <div className="run-logs">
+            {run.logs.length === 0 && (
+              <div className="log-line muted">
+                {run.status === 'idle'
+                  ? 'Run the workflow to see logs here.'
+                  : 'This run produced no logs.'}
+              </div>
+            )}
+            {run.logs.map((log, i) => (
+              <div key={i} className={`log-line ${log.level}`}>
+                <span className="log-node">{log.node_id ?? '—'}</span>
+                <span>{log.message}</span>
+              </div>
+            ))}
+            <div ref={logsEndRef} />
+          </div>
         </div>
       )}
     </div>

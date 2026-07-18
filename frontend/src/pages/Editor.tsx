@@ -17,7 +17,6 @@ import { DragEvent, useCallback, useEffect, useMemo, useRef } from 'react'
 import { api } from '../api'
 import ConfigPanel from '../components/ConfigPanel'
 import Palette from '../components/Palette'
-import RunPanel from '../components/RunPanel'
 import SwarmNode from '../components/SwarmNode'
 import Toolbar from '../components/Toolbar'
 import {
@@ -234,7 +233,7 @@ function EditorInner() {
             proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Dots} gap={26} size={1.1} color="#2b251c" />
-            <Controls position="top-left" />
+            <Controls position="bottom-left" />
             <MiniMap
               pannable
               zoomable
@@ -243,7 +242,6 @@ function EditorInner() {
               nodeStrokeColor="#55492f"
             />
           </ReactFlow>
-          <RunPanel />
         </div>
         <ConfigPanel
           node={selectedNode}
