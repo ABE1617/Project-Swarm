@@ -252,8 +252,8 @@ textarea.mono {
 }
 
 .auth-logo {
-  font-size: 36px;
-  text-align: center;
+  display: flex;
+  justify-content: center;
   line-height: 1;
 }
 
@@ -357,8 +357,8 @@ textarea.mono {
 
 .toolbar-brand {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 9px;
   margin-right: 10px;
   font-family: var(--font-display);
   font-weight: 800;
@@ -368,9 +368,8 @@ textarea.mono {
   user-select: none;
 }
 
-.brand-hex {
-  color: var(--honey);
-  font-size: 15px;
+.toolbar-brand svg {
+  display: block;
 }
 
 .toolbar-divider {
@@ -527,9 +526,11 @@ textarea.mono {
 }
 
 .palette-category::before {
-  content: '⬡';
-  color: var(--honey-deep);
-  font-size: 11px;
+  content: '';
+  width: 7px;
+  height: 8px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: var(--honey-deep);
 }
 
 .palette-item {

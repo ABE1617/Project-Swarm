@@ -1,4 +1,4 @@
-# 🐝 Swarm
+# Swarm
 
 A **local-first visual workflow automation engine** — build automations on an n8n-style drag-and-drop canvas, run them on your own machine, and extend the node library by dropping a single Python file.
 

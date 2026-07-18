@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react'
 import { api, ApiError } from '../api'
+import Logo from '../components/Logo'
 import { useStore } from '../store'
 import type { User } from '../types'
 
@@ -30,7 +31,9 @@ export default function AuthPage() {
   return (
     <div className="fullscreen-center auth-bg">
       <form className="auth-card" onSubmit={submit}>
-        <div className="auth-logo">🐝</div>
+        <div className="auth-logo">
+          <Logo size={46} />
+        </div>
         <h1>Swarm</h1>
         <p className="auth-tagline">Automation that runs on your machine</p>
 

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { useStore } from '../store'
 import type { WorkflowMeta } from '../types'
+import Logo from './Logo'
 
 interface Props {
   onSave: () => Promise<void>
@@ -78,7 +79,8 @@ export default function Toolbar({ onSave, onRun, onNew, onLoad, onExport, onImpo
   return (
     <header className="toolbar">
       <div className="toolbar-brand">
-        <span className="brand-hex">⬡</span>Swarm
+        <Logo size={21} />
+        <span>Swarm</span>
       </div>
       <div className="toolbar-divider" />
 
