@@ -220,8 +220,12 @@ export default function ConfigPanel({
   onRunPrevious,
 }: Props) {
   const runStatus = useStore((s) => s.run.status)
-  const spec = useStore((s) => (node ? s.specsByType[node.data.kind] : undefined))
-  const runState = useStore((s) => (node ? s.run.nodeStates[node.id] : undefined))
+  const lastNodeRef = useRef<Node<SwarmNodeData> | null>(null)
+  if (node) lastNodeRef.current = node
+  const displayNode = node ?? lastNodeRef.current
+
+  const spec = useStore((s) => (displayNode ? s.specsByType[displayNode.data.kind] : undefined))
+  const runState = useStore((s) => (displayNode ? s.run.nodeStates[displayNode.id] : undefined))
   const setNotice = useStore((s) => s.setNotice)
   const focusedField = useRef<FocusedField | null>(null)
   const [, forceRender] = useState(0)
@@ -230,15 +234,12 @@ export default function ConfigPanel({
     focusedField.current = null
   }, [node?.id])
 
-  if (!node || !spec) {
-    return (
-      <aside className="config-panel empty">
-        <div className="config-empty">Select a node</div>
-      </aside>
-    )
+  if (!displayNode || !spec) {
+    return <aside className="config-panel" aria-hidden="true" />
   }
 
-  const config = node.data.config ?? {}
+  const panelNode = displayNode
+  const config = panelNode.data.config ?? {}
 
   function rememberFocus(event: React.FocusEvent) {
     const target = event.target as HTMLElement
@@ -255,7 +256,7 @@ export default function ConfigPanel({
     if (focused && node) {
       const current = String(config[focused.key] ?? '')
       const next = insertAtCursor(focused.element, current, template)
-      onConfigChange(node.id, { [focused.key]: next })
+      onConfigChange(panelNode.id, { [focused.key]: next })
       forceRender((n) => n + 1)
     } else {
       void navigator.clipboard.writeText(template)
@@ -264,22 +265,26 @@ export default function ConfigPanel({
   }
 
   return (
-    <aside className="config-panel">
+    <aside className={`config-panel ${node ? 'open' : ''}`}>
       <div className="config-header">
         <div className="config-title">
           <span className="node-icon" style={{ background: spec.color }} />
           {spec.name}
         </div>
-        <button className="btn btn-icon danger" title="Delete node" onClick={() => onDelete(node.id)}>
+        <button
+          className="btn btn-icon danger"
+          title="Delete node"
+          onClick={() => onDelete(panelNode.id)}
+        >
           <Trash2 size={15} />
         </button>
       </div>
       <div className="config-id">
-        <code>{node.id}</code>
+        <code>{panelNode.id}</code>
       </div>
 
       <InputDataPanel
-        node={node}
+        node={panelNode}
         edges={edges}
         allNodes={allNodes}
         onPick={handlePick}
@@ -290,9 +295,9 @@ export default function ConfigPanel({
         <label className="config-field">
           <span>Label</span>
           <input
-            value={node.data.label ?? ''}
+            value={panelNode.data.label ?? ''}
             placeholder={spec.name}
-            onChange={(e) => onLabelChange(node.id, e.target.value)}
+            onChange={(e) => onLabelChange(panelNode.id, e.target.value)}
           />
         </label>
 
@@ -307,7 +312,7 @@ export default function ConfigPanel({
               <FieldInput
                 field={field}
                 value={config[field.key]}
-                onChange={(value) => onConfigChange(node.id, { [field.key]: value })}
+                onChange={(value) => onConfigChange(panelNode.id, { [field.key]: value })}
               />
             </label>
           ))}
@@ -329,7 +334,7 @@ export default function ConfigPanel({
             className="btn btn-small"
             title="Run this node (and everything before it) to see its output"
             disabled={runStatus === 'running'}
-            onClick={() => onTestNode(node.id)}
+            onClick={() => onTestNode(panelNode.id)}
           >
             <FlaskConical size={12} /> Execute step
           </button>

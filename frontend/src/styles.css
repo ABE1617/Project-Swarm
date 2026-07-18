@@ -330,6 +330,8 @@ textarea.mono {
   flex: 1;
   display: flex;
   min-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .canvas-wrap {
@@ -403,66 +405,213 @@ textarea.mono {
   margin-left: 8px;
 }
 
-.menu-anchor {
-  position: relative;
-}
-
-.dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  min-width: 270px;
-  max-height: 340px;
-  overflow-y: auto;
-  background: var(--overlay);
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
-  padding: 6px;
-  box-shadow: var(--shadow);
-  z-index: 50;
-}
-
-.dropdown-empty {
-  padding: 16px;
-  color: var(--ink-faint);
-  font-size: 13px;
-  text-align: center;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.dropdown-load {
-  flex: 1;
-  text-align: left;
-  padding: 9px 11px;
+.toolbar-brand.as-button {
   background: none;
   border: none;
+  padding: 4px 6px;
   border-radius: 8px;
   color: var(--ink);
-  font-family: var(--font-ui);
-  font-size: 13px;
   cursor: pointer;
 }
 
-.dropdown-load:hover {
+.toolbar-brand.as-button:hover {
   background: var(--raised);
 }
 
-.toast {
-  position: absolute;
-  top: calc(100% + 12px);
-  right: 14px;
-  padding: 10px 15px;
-  background: var(--overlay);
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--ink-faint);
+  min-width: 74px;
+  padding: 0 6px;
+}
+
+.save-status.saved {
+  color: var(--ok);
+}
+
+.save-status.error {
+  color: var(--err);
+}
+
+/* ── shell, lobby, settings ─────────────────────────────────── */
+
+.shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 18px;
+}
+
+.shell-nav a {
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: var(--ink-dim);
+  text-decoration: none;
   font-size: 13px;
-  box-shadow: var(--shadow);
-  z-index: 60;
+  font-weight: 550;
+}
+
+.shell-nav a:hover {
+  background: var(--raised);
+  color: var(--ink);
+}
+
+.shell-nav a.active {
+  background: var(--honey-soft);
+  color: var(--honey);
+}
+
+.shell-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.lobby,
+.settings {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 36px 28px 60px;
+}
+
+.lobby-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.lobby h1,
+.settings h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+}
+
+.settings h1 {
+  margin-bottom: 24px;
+}
+
+.lobby-loading {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+}
+
+.lobby-empty {
+  text-align: center;
+  padding: 90px 0;
+  color: var(--ink-faint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.lobby-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.workflow-card {
+  position: relative;
+  padding: 18px 18px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.workflow-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.workflow-card-name {
+  font-size: 15px;
+  font-weight: 650;
+  margin-bottom: 6px;
+  padding-right: 28px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-card-meta {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.workflow-card-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.workflow-card:hover .workflow-card-delete {
+  opacity: 1;
+}
+
+.settings-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 18px;
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.settings-section h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-row .profile-value {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+.settings-ok {
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: var(--ok-soft);
+  border: 1px solid rgba(99, 180, 92, 0.35);
+  color: var(--ok);
+  font-size: 12.5px;
 }
 
 /* ── palette ────────────────────────────────────────────────── */
@@ -831,18 +980,23 @@ textarea.mono {
 /* ── config panel ───────────────────────────────────────────── */
 
 .config-panel {
-  width: 316px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 324px;
   overflow-y: auto;
   background: var(--surface);
   border-left: 1px solid var(--line);
   padding: 16px;
+  transform: translateX(calc(100% + 24px));
+  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+  box-shadow: -14px 0 34px rgba(0, 0, 0, 0.38);
+  z-index: 14;
 }
 
-.config-empty {
-  color: var(--ink-faint);
-  font-size: 13px;
-  padding-top: 48px;
-  text-align: center;
+.config-panel.open {
+  transform: none;
 }
 
 .config-header {
@@ -1400,5 +1554,10 @@ textarea.mono {
   .swarm-node.run-running,
   .canvas-wrap[data-running='true'] .react-flow__edge-path {
     animation: none;
+  }
+
+  .config-panel,
+  .workflow-card {
+    transition: none;
   }
 }

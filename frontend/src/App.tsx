@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import AuthPage from './pages/AuthPage'
 import Editor from './pages/Editor'
+import LobbyPage from './pages/LobbyPage'
+import SettingsPage from './pages/SettingsPage'
 import { useStore } from './store'
 
 export default function App() {
@@ -19,5 +22,15 @@ export default function App() {
       </div>
     )
   }
-  return user ? <Editor /> : <AuthPage />
+  if (!user) return <AuthPage />
+
+  return (
+    <Routes>
+      <Route path="/" element={<LobbyPage />} />
+      <Route path="/editor" element={<Editor />} />
+      <Route path="/editor/:workflowId" element={<Editor />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
 }
