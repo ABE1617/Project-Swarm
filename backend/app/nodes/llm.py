@@ -7,7 +7,9 @@ from app.engine.types import NodeContext, NodeExecutionError
 
 NODE_TYPE = "llm"
 NODE_NAME = "LLM"
-NODE_DESCRIPTION = "Generate text with OpenAI, DeepSeek, or any OpenAI-compatible API (e.g. local Ollama)"
+NODE_DESCRIPTION = (
+    "Generate text with OpenAI, DeepSeek, or any OpenAI-compatible API (e.g. local Ollama)"
+)
 NODE_CATEGORY = "AI"
 NODE_COLOR = "#10b981"
 NODE_ICON = "sparkles"
@@ -16,13 +18,27 @@ NODE_OUTPUTS = ["out"]
 NODE_TIMEOUT = 300
 
 PROVIDERS = {
-    "openai": {"base_url": "https://api.openai.com/v1", "env_key": "OPENAI_API_KEY", "default_model": "gpt-4o-mini"},
-    "deepseek": {"base_url": "https://api.deepseek.com/v1", "env_key": "DEEPSEEK_API_KEY", "default_model": "deepseek-chat"},
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "env_key": "OPENAI_API_KEY",
+        "default_model": "gpt-4o-mini",
+    },
+    "deepseek": {
+        "base_url": "https://api.deepseek.com/v1",
+        "env_key": "DEEPSEEK_API_KEY",
+        "default_model": "deepseek-chat",
+    },
     "custom": {"base_url": "", "env_key": "SWARM_LLM_API_KEY", "default_model": ""},
 }
 
 CONFIG_FIELDS = [
-    {"key": "provider", "label": "Provider", "type": "select", "options": ["openai", "deepseek", "custom"], "default": "openai"},
+    {
+        "key": "provider",
+        "label": "Provider",
+        "type": "select",
+        "options": ["openai", "deepseek", "custom"],
+        "default": "openai",
+    },
     {
         "key": "base_url",
         "label": "Base URL",
@@ -31,17 +47,48 @@ CONFIG_FIELDS = [
         "help": "Any OpenAI-compatible endpoint (Ollama, LM Studio, vLLM...)",
         "showIf": {"provider": "custom"},
     },
-    {"key": "model", "label": "Model", "type": "string", "placeholder": "gpt-4o-mini / deepseek-chat / llama3.2"},
+    {
+        "key": "model",
+        "label": "Model",
+        "type": "string",
+        "placeholder": "gpt-4o-mini / deepseek-chat / llama3.2",
+    },
     {
         "key": "api_key",
         "label": "API key",
         "type": "secret",
         "help": "Leave empty to use the OPENAI_API_KEY / DEEPSEEK_API_KEY env var.",
     },
-    {"key": "system", "label": "System prompt", "type": "text", "placeholder": "You are a helpful assistant."},
-    {"key": "prompt", "label": "Prompt", "type": "text", "required": True, "placeholder": "Summarize this: {{ input.body }}"},
-    {"key": "temperature", "label": "Temperature", "type": "number", "default": 0.7, "min": 0, "max": 2, "step": 0.1},
-    {"key": "max_tokens", "label": "Max tokens", "type": "number", "default": 1024, "min": 1, "max": 128000},
+    {
+        "key": "system",
+        "label": "System prompt",
+        "type": "text",
+        "placeholder": "You are a helpful assistant.",
+    },
+    {
+        "key": "prompt",
+        "label": "Prompt",
+        "type": "text",
+        "required": True,
+        "placeholder": "Summarize this: {{ input.body }}",
+    },
+    {
+        "key": "temperature",
+        "label": "Temperature",
+        "type": "number",
+        "default": 0.7,
+        "min": 0,
+        "max": 2,
+        "step": 0.1,
+    },
+    {
+        "key": "max_tokens",
+        "label": "Max tokens",
+        "type": "number",
+        "default": 1024,
+        "min": 1,
+        "max": 128000,
+    },
     {"key": "json_mode", "label": "Force JSON output", "type": "boolean", "default": False},
 ]
 
@@ -94,7 +141,9 @@ async def run(ctx: NodeContext):
     ctx.log("info", f"Calling {provider_key} model {model}")
     try:
         async with httpx.AsyncClient(timeout=280) as client:
-            response = await client.post(f"{base_url}/chat/completions", headers=headers, json=payload)
+            response = await client.post(
+                f"{base_url}/chat/completions", headers=headers, json=payload
+            )
     except httpx.TimeoutException:
         raise NodeExecutionError("LLM request timed out") from None
     except httpx.HTTPError as e:

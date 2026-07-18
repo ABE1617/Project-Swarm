@@ -18,15 +18,33 @@ UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files"
 
 CONFIG_FIELDS = [
     CREDENTIAL_FIELD,
-    {"key": "name", "label": "File name", "type": "string", "required": True,
-     "placeholder": "report-{{ input.date }}.txt"},
-    {"key": "content", "label": "Content", "type": "text", "required": True,
-     "placeholder": "{{ input.text }}"},
-    {"key": "mime_type", "label": "Content type", "type": "select",
-     "options": ["text/plain", "text/csv", "application/json", "text/html", "text/markdown"],
-     "default": "text/plain"},
-    {"key": "folder_id", "label": "Folder ID", "type": "string",
-     "help": "Optional - the ID from the folder's URL; empty uploads to My Drive"},
+    {
+        "key": "name",
+        "label": "File name",
+        "type": "string",
+        "required": True,
+        "placeholder": "report-{{ input.date }}.txt",
+    },
+    {
+        "key": "content",
+        "label": "Content",
+        "type": "text",
+        "required": True,
+        "placeholder": "{{ input.text }}",
+    },
+    {
+        "key": "mime_type",
+        "label": "Content type",
+        "type": "select",
+        "options": ["text/plain", "text/csv", "application/json", "text/html", "text/markdown"],
+        "default": "text/plain",
+    },
+    {
+        "key": "folder_id",
+        "label": "Folder ID",
+        "type": "string",
+        "help": "Optional - the ID from the folder's URL; empty uploads to My Drive",
+    },
 ]
 
 

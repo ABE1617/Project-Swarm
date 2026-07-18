@@ -15,11 +15,39 @@ NODE_OUTPUTS = ["out"]
 NODE_TIMEOUT = 150
 
 CONFIG_FIELDS = [
-    {"key": "url", "label": "URL", "type": "string", "required": True, "placeholder": "https://api.example.com/items"},
-    {"key": "method", "label": "Method", "type": "select", "options": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"], "default": "GET"},
-    {"key": "headers", "label": "Headers (JSON)", "type": "json", "placeholder": '{ "Authorization": "Bearer {{ env.MY_API_KEY }}" }'},
-    {"key": "params", "label": "Query params (JSON)", "type": "json", "placeholder": '{ "page": 1 }'},
-    {"key": "body_type", "label": "Body type", "type": "select", "options": ["none", "json", "text"], "default": "none"},
+    {
+        "key": "url",
+        "label": "URL",
+        "type": "string",
+        "required": True,
+        "placeholder": "https://api.example.com/items",
+    },
+    {
+        "key": "method",
+        "label": "Method",
+        "type": "select",
+        "options": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
+        "default": "GET",
+    },
+    {
+        "key": "headers",
+        "label": "Headers (JSON)",
+        "type": "json",
+        "placeholder": '{ "Authorization": "Bearer {{ env.MY_API_KEY }}" }',
+    },
+    {
+        "key": "params",
+        "label": "Query params (JSON)",
+        "type": "json",
+        "placeholder": '{ "page": 1 }',
+    },
+    {
+        "key": "body_type",
+        "label": "Body type",
+        "type": "select",
+        "options": ["none", "json", "text"],
+        "default": "none",
+    },
     {
         "key": "body",
         "label": "Body",
@@ -27,8 +55,20 @@ CONFIG_FIELDS = [
         "placeholder": '{ "title": "{{ input.title }}" }',
         "showIf": {"body_type": ["json", "text"]},
     },
-    {"key": "timeout", "label": "Timeout (seconds)", "type": "number", "default": 30, "min": 1, "max": 600},
-    {"key": "fail_on_error", "label": "Fail on 4xx/5xx response", "type": "boolean", "default": False},
+    {
+        "key": "timeout",
+        "label": "Timeout (seconds)",
+        "type": "number",
+        "default": 30,
+        "min": 1,
+        "max": 600,
+    },
+    {
+        "key": "fail_on_error",
+        "label": "Fail on 4xx/5xx response",
+        "type": "boolean",
+        "default": False,
+    },
 ]
 
 
@@ -77,7 +117,10 @@ async def run(ctx: NodeContext):
     except ValueError:
         body = response.text
 
-    ctx.log("info", f"Response {response.status_code} in {response.elapsed.total_seconds() * 1000:.0f}ms")
+    ctx.log(
+        "info",
+        f"Response {response.status_code} in {response.elapsed.total_seconds() * 1000:.0f}ms",
+    )
     if ctx.config.get("fail_on_error") and response.status_code >= 400:
         raise NodeExecutionError(f"HTTP {response.status_code} from {url}")
 

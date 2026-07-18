@@ -17,17 +17,37 @@ SHEETS = "https://sheets.googleapis.com/v4/spreadsheets"
 
 CONFIG_FIELDS = [
     CREDENTIAL_FIELD,
-    {"key": "spreadsheet_id", "label": "Spreadsheet", "type": "string", "required": True,
-     "placeholder": "ID or full spreadsheet URL"},
-    {"key": "sheet_range", "label": "Sheet", "type": "string", "default": "Sheet1",
-     "help": "Sheet name (e.g. Sheet1) or A1 range (e.g. Sheet1!A:C)"},
-    {"key": "values", "label": "Row values (JSON)", "type": "json", "required": True,
-     "placeholder": '["{{ input.name }}", "{{ input.email }}", 42]',
-     "help": 'One row ["a", 1], multiple rows [["a"], ["b"]], or an object '
-             "(its values become the row)"},
-    {"key": "value_input", "label": "Value interpretation", "type": "select",
-     "options": ["USER_ENTERED", "RAW"], "default": "USER_ENTERED",
-     "help": "USER_ENTERED parses formulas/dates like typing in the UI; RAW stores as-is"},
+    {
+        "key": "spreadsheet_id",
+        "label": "Spreadsheet",
+        "type": "string",
+        "required": True,
+        "placeholder": "ID or full spreadsheet URL",
+    },
+    {
+        "key": "sheet_range",
+        "label": "Sheet",
+        "type": "string",
+        "default": "Sheet1",
+        "help": "Sheet name (e.g. Sheet1) or A1 range (e.g. Sheet1!A:C)",
+    },
+    {
+        "key": "values",
+        "label": "Row values (JSON)",
+        "type": "json",
+        "required": True,
+        "placeholder": '["{{ input.name }}", "{{ input.email }}", 42]',
+        "help": 'One row ["a", 1], multiple rows [["a"], ["b"]], or an object '
+        "(its values become the row)",
+    },
+    {
+        "key": "value_input",
+        "label": "Value interpretation",
+        "type": "select",
+        "options": ["USER_ENTERED", "RAW"],
+        "default": "USER_ENTERED",
+        "help": "USER_ENTERED parses formulas/dates like typing in the UI; RAW stores as-is",
+    },
 ]
 
 

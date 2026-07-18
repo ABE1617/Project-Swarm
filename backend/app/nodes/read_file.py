@@ -20,7 +20,13 @@ CONFIG_FIELDS = [
         "required": True,
         "placeholder": "notes/todo.txt (relative to the data/ sandbox)",
     },
-    {"key": "format", "label": "Format", "type": "select", "options": ["auto", "text", "json"], "default": "auto"},
+    {
+        "key": "format",
+        "label": "Format",
+        "type": "select",
+        "options": ["auto", "text", "json"],
+        "default": "auto",
+    },
     {"key": "encoding", "label": "Encoding", "type": "string", "default": "utf-8"},
 ]
 

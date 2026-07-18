@@ -18,14 +18,32 @@ CALENDAR = "https://www.googleapis.com/calendar/v3"
 CONFIG_FIELDS = [
     CREDENTIAL_FIELD,
     {"key": "calendar_id", "label": "Calendar", "type": "string", "default": "primary"},
-    {"key": "time_min", "label": "From", "type": "string",
-     "placeholder": "2026-07-20T00:00:00Z (empty = now)"},
-    {"key": "time_max", "label": "Until", "type": "string",
-     "placeholder": "2026-07-27T00:00:00Z (optional)"},
-    {"key": "search", "label": "Search text", "type": "string",
-     "help": "Free-text match on title, description, attendees"},
-    {"key": "max_results", "label": "Max events", "type": "number", "default": 10,
-     "min": 1, "max": 100},
+    {
+        "key": "time_min",
+        "label": "From",
+        "type": "string",
+        "placeholder": "2026-07-20T00:00:00Z (empty = now)",
+    },
+    {
+        "key": "time_max",
+        "label": "Until",
+        "type": "string",
+        "placeholder": "2026-07-27T00:00:00Z (optional)",
+    },
+    {
+        "key": "search",
+        "label": "Search text",
+        "type": "string",
+        "help": "Free-text match on title, description, attendees",
+    },
+    {
+        "key": "max_results",
+        "label": "Max events",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "max": 100,
+    },
 ]
 
 
@@ -52,9 +70,7 @@ async def run(ctx: NodeContext):
     if ctx.config.get("search"):
         params["q"] = str(ctx.config["search"])
 
-    data = await google_api(
-        ctx, "GET", f"{CALENDAR}/calendars/{calendar_id}/events", params=params
-    )
+    data = await google_api(ctx, "GET", f"{CALENDAR}/calendars/{calendar_id}/events", params=params)
     events = [
         {
             "id": item.get("id"),

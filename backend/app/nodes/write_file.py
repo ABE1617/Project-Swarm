@@ -27,7 +27,13 @@ CONFIG_FIELDS = [
         "required": True,
         "placeholder": "{{ input.text }}",
     },
-    {"key": "mode", "label": "Mode", "type": "select", "options": ["overwrite", "append"], "default": "overwrite"},
+    {
+        "key": "mode",
+        "label": "Mode",
+        "type": "select",
+        "options": ["overwrite", "append"],
+        "default": "overwrite",
+    },
     {"key": "encoding", "label": "Encoding", "type": "string", "default": "utf-8"},
 ]
 
@@ -51,4 +57,8 @@ async def run(ctx: NodeContext):
         written = f.write(content)
 
     ctx.log("info", f"Wrote {written} chars to {path}")
-    return {"path": str(path), "chars_written": written, "mode": ctx.config.get("mode") or "overwrite"}
+    return {
+        "path": str(path),
+        "chars_written": written,
+        "mode": ctx.config.get("mode") or "overwrite",
+    }

@@ -16,16 +16,36 @@ NODE_TIMEOUT = 90
 
 CONFIG_FIELDS = [
     CREDENTIAL_FIELD,
-    {"key": "to", "label": "To", "type": "string", "required": True,
-     "placeholder": "someone@example.com, other@example.com"},
+    {
+        "key": "to",
+        "label": "To",
+        "type": "string",
+        "required": True,
+        "placeholder": "someone@example.com, other@example.com",
+    },
     {"key": "cc", "label": "Cc", "type": "string"},
     {"key": "bcc", "label": "Bcc", "type": "string"},
-    {"key": "subject", "label": "Subject", "type": "string", "required": True,
-     "placeholder": "Report for {{ input.date }}"},
-    {"key": "body_type", "label": "Format", "type": "select", "options": ["text", "html"],
-     "default": "text"},
-    {"key": "body", "label": "Body", "type": "text", "required": True,
-     "placeholder": "Hello,\n\n{{ input.summary }}"},
+    {
+        "key": "subject",
+        "label": "Subject",
+        "type": "string",
+        "required": True,
+        "placeholder": "Report for {{ input.date }}",
+    },
+    {
+        "key": "body_type",
+        "label": "Format",
+        "type": "select",
+        "options": ["text", "html"],
+        "default": "text",
+    },
+    {
+        "key": "body",
+        "label": "Body",
+        "type": "text",
+        "required": True,
+        "placeholder": "Hello,\n\n{{ input.summary }}",
+    },
 ]
 
 

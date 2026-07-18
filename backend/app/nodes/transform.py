@@ -56,7 +56,9 @@ async def run(ctx: NodeContext):
 
     if mode in ("pick", "omit"):
         if not isinstance(ctx.input, dict):
-            raise NodeExecutionError(f"'{mode}' needs a JSON object as input, got {type(ctx.input).__name__}")
+            raise NodeExecutionError(
+                f"'{mode}' needs a JSON object as input, got {type(ctx.input).__name__}"
+            )
         keys = [k.strip() for k in str(ctx.config.get("keys") or "").split(",") if k.strip()]
         if not keys:
             raise NodeExecutionError("Provide at least one key")

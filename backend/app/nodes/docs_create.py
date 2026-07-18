@@ -17,10 +17,20 @@ DOCS = "https://docs.googleapis.com/v1/documents"
 
 CONFIG_FIELDS = [
     CREDENTIAL_FIELD,
-    {"key": "title", "label": "Title", "type": "string", "required": True,
-     "placeholder": "Notes {{ input.date }}"},
-    {"key": "content", "label": "Content", "type": "text",
-     "placeholder": "{{ input.text }}", "help": "Optional - inserted as the document body"},
+    {
+        "key": "title",
+        "label": "Title",
+        "type": "string",
+        "required": True,
+        "placeholder": "Notes {{ input.date }}",
+    },
+    {
+        "key": "content",
+        "label": "Content",
+        "type": "text",
+        "placeholder": "{{ input.text }}",
+        "help": "Optional - inserted as the document body",
+    },
 ]
 
 
@@ -37,9 +47,7 @@ async def run(ctx: NodeContext):
             ctx,
             "POST",
             f"{DOCS}/{document_id}:batchUpdate",
-            json_body={
-                "requests": [{"insertText": {"location": {"index": 1}, "text": content}}]
-            },
+            json_body={"requests": [{"insertText": {"location": {"index": 1}, "text": content}}]},
         )
 
     ctx.log("info", f"Created document '{title}'")

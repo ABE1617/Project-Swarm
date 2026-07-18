@@ -10,13 +10,37 @@ NODE_INPUTS = ["in"]
 NODE_OUTPUTS = ["true", "false"]
 
 CONFIG_FIELDS = [
-    {"key": "mode", "label": "Mode", "type": "select", "options": ["simple", "expression"], "default": "simple"},
-    {"key": "value1", "label": "Value 1", "type": "string", "placeholder": "{{ input.status }}", "showIf": {"mode": "simple"}},
+    {
+        "key": "mode",
+        "label": "Mode",
+        "type": "select",
+        "options": ["simple", "expression"],
+        "default": "simple",
+    },
+    {
+        "key": "value1",
+        "label": "Value 1",
+        "type": "string",
+        "placeholder": "{{ input.status }}",
+        "showIf": {"mode": "simple"},
+    },
     {
         "key": "operator",
         "label": "Operator",
         "type": "select",
-        "options": ["==", "!=", ">", "<", ">=", "<=", "contains", "startsWith", "endsWith", "isEmpty", "isNotEmpty"],
+        "options": [
+            "==",
+            "!=",
+            ">",
+            "<",
+            ">=",
+            "<=",
+            "contains",
+            "startsWith",
+            "endsWith",
+            "isEmpty",
+            "isNotEmpty",
+        ],
         "default": "==",
         "showIf": {"mode": "simple"},
     },

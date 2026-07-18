@@ -15,7 +15,15 @@ NODE_TIMEOUT = 330
 MAX_SECONDS = 300
 
 CONFIG_FIELDS = [
-    {"key": "seconds", "label": "Seconds", "type": "number", "default": 1, "required": True, "min": 0, "max": MAX_SECONDS},
+    {
+        "key": "seconds",
+        "label": "Seconds",
+        "type": "number",
+        "default": 1,
+        "required": True,
+        "min": 0,
+        "max": MAX_SECONDS,
+    },
 ]
 
 

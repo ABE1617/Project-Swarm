@@ -17,11 +17,21 @@ GMAIL = "https://gmail.googleapis.com/gmail/v1"
 
 CONFIG_FIELDS = [
     CREDENTIAL_FIELD,
-    {"key": "query", "label": "Search query", "type": "string",
-     "placeholder": "is:unread from:boss@example.com",
-     "help": "Gmail search syntax, same as the Gmail search box. Empty = latest messages."},
-    {"key": "max_results", "label": "Max messages", "type": "number", "default": 10,
-     "min": 1, "max": 50},
+    {
+        "key": "query",
+        "label": "Search query",
+        "type": "string",
+        "placeholder": "is:unread from:boss@example.com",
+        "help": "Gmail search syntax, same as the Gmail search box. Empty = latest messages.",
+    },
+    {
+        "key": "max_results",
+        "label": "Max messages",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "max": 50,
+    },
     {"key": "include_body", "label": "Include message body", "type": "boolean", "default": True},
 ]
 

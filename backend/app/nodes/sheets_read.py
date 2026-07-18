@@ -15,12 +15,27 @@ SHEETS = "https://sheets.googleapis.com/v4/spreadsheets"
 
 CONFIG_FIELDS = [
     CREDENTIAL_FIELD,
-    {"key": "spreadsheet_id", "label": "Spreadsheet", "type": "string", "required": True,
-     "placeholder": "ID or full spreadsheet URL"},
-    {"key": "sheet_range", "label": "Sheet or range", "type": "string", "default": "Sheet1",
-     "help": "Sheet name reads everything; A1 notation (Sheet1!A2:C10) reads a slice"},
-    {"key": "as_objects", "label": "First row is headers", "type": "boolean", "default": True,
-     "help": "Return rows as objects keyed by the header row"},
+    {
+        "key": "spreadsheet_id",
+        "label": "Spreadsheet",
+        "type": "string",
+        "required": True,
+        "placeholder": "ID or full spreadsheet URL",
+    },
+    {
+        "key": "sheet_range",
+        "label": "Sheet or range",
+        "type": "string",
+        "default": "Sheet1",
+        "help": "Sheet name reads everything; A1 notation (Sheet1!A2:C10) reads a slice",
+    },
+    {
+        "key": "as_objects",
+        "label": "First row is headers",
+        "type": "boolean",
+        "default": True,
+        "help": "Return rows as objects keyed by the header row",
+    },
 ]
 
 
