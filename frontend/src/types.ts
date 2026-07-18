@@ -1,7 +1,7 @@
 export interface ConfigField {
   key: string
   label: string
-  type: 'string' | 'text' | 'number' | 'boolean' | 'select' | 'json' | 'secret'
+  type: 'string' | 'text' | 'number' | 'boolean' | 'select' | 'json' | 'secret' | 'credential'
   options?: string[]
   default?: unknown
   required?: boolean
@@ -11,6 +11,17 @@ export interface ConfigField {
   min?: number
   max?: number
   step?: number
+  credential_type?: string
+}
+
+export interface Credential {
+  id: number
+  name: string
+  type: string
+  services: string[]
+  account_email: string
+  connected: boolean
+  created_at: string
 }
 
 export interface NodeSpec {

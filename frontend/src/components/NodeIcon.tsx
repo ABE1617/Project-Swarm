@@ -87,6 +87,43 @@ const ICONS: Record<string, ReactElement> = {
       <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
     </>
   ),
+  // gmail: envelope with the fold
+  gmail: (
+    <>
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+      <path d="M4.5 7.5 L12 13 L19.5 7.5" />
+    </>
+  ),
+  // sheets: page ruled into cells
+  sheets: (
+    <>
+      <rect x="5" y="3.8" width="14" height="16.4" rx="1.6" />
+      <path d="M5 9.5 H19 M5 14 H19 M12 9.5 V20.2" />
+    </>
+  ),
+  // calendar: month grid with an event dot
+  'calendar-g': (
+    <>
+      <rect x="4" y="5.5" width="16" height="14.5" rx="2" />
+      <path d="M4 10 H20 M8.5 3.5 V7 M15.5 3.5 V7" />
+      <circle cx="12" cy="15" r="1.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  // drive: the tri-fold
+  drive: (
+    <>
+      <path d="M9.3 4.8 H14.7 L21 15.6 L18.2 20.2 H5.8 L3 15.6 Z" />
+      <path d="M9.3 4.8 L12.6 15.6 M14.7 4.8 L8.4 15.6 H21" />
+    </>
+  ),
+  // docs: page with text lines
+  docs: (
+    <>
+      <path d="M13.5 3.8 H8 a1.6 1.6 0 0 0 -1.6 1.6 V18.6 a1.6 1.6 0 0 0 1.6 1.6 H16 a1.6 1.6 0 0 0 1.6 -1.6 V8 Z" />
+      <path d="M13.5 3.8 V8 H17.6" />
+      <path d="M9.2 12 H14.8 M9.2 15 H14.8" />
+    </>
+  ),
 }
 
 export default function NodeIcon({ name, size = 16 }: { name: string; size?: number }) {

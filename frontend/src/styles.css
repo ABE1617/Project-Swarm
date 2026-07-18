@@ -1138,6 +1138,172 @@ textarea.mono {
   white-space: nowrap;
 }
 
+/* ── credentials modal ──────────────────────────────────────── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 5, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 9vh;
+  z-index: 100;
+}
+
+.modal {
+  width: 560px;
+  max-width: 92vw;
+  max-height: 78vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 18px 20px 20px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.modal-empty {
+  color: var(--ink-dim);
+  font-size: 13px;
+  margin: 8px 0 14px;
+}
+
+.credential-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.credential-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.credential-name {
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.credential-meta {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.credential-ok {
+  color: var(--ok);
+}
+
+.credential-pending {
+  color: var(--honey);
+}
+
+.credential-add {
+  width: 100%;
+  justify-content: center;
+  border: 1px dashed var(--line-strong);
+  margin-top: 4px;
+}
+
+.credential-form {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.credential-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+.credential-services > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+.service-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 7px;
+}
+
+.service-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.service-check input {
+  width: auto;
+  accent-color: var(--honey);
+}
+
+.credential-hint {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  line-height: 1.6;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+
+.credential-hint code {
+  display: block;
+  margin: 6px 0;
+  padding: 6px 8px;
+  background: var(--bg);
+  border-radius: 6px;
+  color: var(--honey);
+  font-size: 11px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.credential-hint a {
+  color: var(--honey);
+}
+
+.credential-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* ── motion discipline ──────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

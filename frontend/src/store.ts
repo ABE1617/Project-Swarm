@@ -1,6 +1,13 @@
 import { create } from 'zustand'
 import { api, runEventsUrl } from './api'
-import type { NodeLoadError, NodeSpec, RunState, User, WorkflowDefinition } from './types'
+import type {
+  Credential,
+  NodeLoadError,
+  NodeSpec,
+  RunState,
+  User,
+  WorkflowDefinition,
+} from './types'
 
 interface SwarmStore {
   user: User | null
@@ -13,7 +20,9 @@ interface SwarmStore {
   run: RunState
   ws: WebSocket | null
   notice: string | null
+  credentials: Credential[]
 
+  loadCredentials: () => Promise<void>
   setNotice: (message: string) => void
   setUser: (user: User | null) => void
   checkAuth: () => Promise<void>
@@ -38,6 +47,12 @@ export const useStore = create<SwarmStore>((set, get) => ({
   run: idleRun,
   ws: null,
   notice: null,
+  credentials: [],
+
+  loadCredentials: async () => {
+    const { credentials } = await api.get<{ credentials: Credential[] }>('/api/credentials')
+    set({ credentials })
+  },
 
   setNotice: (message) => {
     set({ notice: message })

@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import { Trash2 } from 'lucide-react'
+import { useEffect } from 'react'
 import { fieldDefaults, fieldVisible } from '../lib/fields'
 import { useStore } from '../store'
 import type { ConfigField, SwarmNodeData } from '../types'
@@ -22,6 +23,41 @@ function jsonHint(value: unknown): string | null {
   }
 }
 
+function CredentialSelect({
+  value,
+  onChange,
+}: {
+  value: unknown
+  onChange: (value: unknown) => void
+}) {
+  const credentials = useStore((s) => s.credentials)
+  const loadCredentials = useStore((s) => s.loadCredentials)
+
+  useEffect(() => {
+    if (credentials.length === 0) void loadCredentials()
+  }, [credentials.length, loadCredentials])
+
+  if (credentials.length === 0) {
+    return (
+      <div className="field-help">
+        No Google credential yet - create one via the Credentials button in the toolbar.
+      </div>
+    )
+  }
+  return (
+    <select value={String(value ?? '')} onChange={(e) => onChange(Number(e.target.value) || '')}>
+      <option value="">Select a credential…</option>
+      {credentials.map((cred) => (
+        <option key={cred.id} value={cred.id}>
+          {cred.name}
+          {cred.account_email ? ` (${cred.account_email})` : ''}
+          {cred.connected ? '' : ' - not connected'}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 function FieldInput({
   field,
   value,
@@ -33,6 +69,8 @@ function FieldInput({
 }) {
   const current = value ?? field.default ?? ''
   switch (field.type) {
+    case 'credential':
+      return <CredentialSelect value={value} onChange={onChange} />
     case 'select':
       return (
         <select value={String(current)} onChange={(e) => onChange(e.target.value)}>

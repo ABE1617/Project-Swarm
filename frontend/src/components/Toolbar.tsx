@@ -1,8 +1,19 @@
-import { Download, FilePlus2, FolderOpen, LogOut, Play, Save, Trash2, Upload } from 'lucide-react'
+import {
+  Download,
+  FilePlus2,
+  FolderOpen,
+  KeyRound,
+  LogOut,
+  Play,
+  Save,
+  Trash2,
+  Upload,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { useStore } from '../store'
 import type { WorkflowMeta } from '../types'
+import CredentialsModal from './CredentialsModal'
 import Logo from './Logo'
 import RunPanel from './RunPanel'
 
@@ -24,6 +35,7 @@ export default function Toolbar({ onSave, onRun, onNew, onLoad, onExport, onImpo
   const runStatus = useStore((s) => s.run.status)
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const [credentialsOpen, setCredentialsOpen] = useState(false)
   const [workflows, setWorkflows] = useState<WorkflowMeta[]>([])
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -144,6 +156,10 @@ export default function Toolbar({ onSave, onRun, onNew, onLoad, onExport, onImpo
         }}
       />
 
+      <button className="btn" onClick={() => setCredentialsOpen(true)} title="Manage credentials">
+        <KeyRound size={15} /> Credentials
+      </button>
+
       <span className="flex-spacer" />
 
       <RunPanel />
@@ -164,6 +180,7 @@ export default function Toolbar({ onSave, onRun, onNew, onLoad, onExport, onImpo
       </div>
 
       {toast && <div className="toast">{toast}</div>}
+      {credentialsOpen && <CredentialsModal onClose={() => setCredentialsOpen(false)} />}
     </header>
   )
 }

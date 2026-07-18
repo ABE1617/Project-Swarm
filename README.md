@@ -26,8 +26,31 @@ A **local-first visual workflow automation engine** — build automations on an 
 | Set Variables | Set/merge fields onto the flowing data |
 | Transform | Pick/omit fields, build objects from templates, parse/stringify JSON |
 | LLM | OpenAI, DeepSeek, or any OpenAI-compatible endpoint (local Ollama works) |
+| Gmail: Send / Read | Send mail (text/html, cc/bcc); search and read your inbox |
+| Sheets: Append / Read | Append rows to and read rows from Google Sheets |
+| Calendar: Create / List | Create events (timed or all-day, attendees) and list upcoming ones |
+| Drive: Upload | Create files in Google Drive from workflow data |
+| Docs: Create | Create a Google Doc with initial content |
 | Read / Write File | File I/O, sandboxed to the `data/` directory |
 | Delay | Non-blocking wait |
+
+## Connecting Google (one-time, ~5 minutes)
+
+Google nodes authenticate through an OAuth credential you own - nothing goes
+through third-party servers:
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+   create a project (or reuse one) and an **OAuth client ID** of type
+   **Web application**.
+2. Add this authorized redirect URI: `http://localhost:8000/api/oauth/google/callback`
+3. Enable the APIs you plan to use (Gmail API, Google Sheets API, Google
+   Calendar API, Google Drive API, Google Docs API) under "Enabled APIs".
+4. In Swarm, open **Credentials** in the toolbar, add a Google credential with
+   your client ID/secret, pick the services, and finish the Google consent
+   screen that opens.
+
+Tokens are stored encrypted on your machine and refreshed automatically.
+Google nodes then offer the credential in a dropdown.
 
 ## Quickstart
 
