@@ -3,6 +3,7 @@ import { api, runEventsUrl } from './api'
 import type {
   Credential,
   NodeLoadError,
+  NodeRunState,
   NodeSpec,
   RunState,
   User,
@@ -19,6 +20,7 @@ interface SwarmStore {
   workflowName: string
   run: RunState
   ws: WebSocket | null
+  pollTimer: number | null
   notice: string | null
   credentials: Credential[]
 
@@ -52,6 +54,7 @@ export const useStore = create<SwarmStore>((set, get) => ({
   workflowName: 'Untitled workflow',
   run: idleRun,
   ws: null,
+  pollTimer: null,
   notice: null,
   credentials: [],
 
@@ -98,7 +101,8 @@ export const useStore = create<SwarmStore>((set, get) => ({
 
   startRun: async (definition, workflowId, workflowName, targetNodeId, excludeTarget) => {
     get().ws?.close()
-    set({ run: { ...idleRun, status: 'running', runId: null } })
+    if (get().pollTimer) window.clearInterval(get().pollTimer!)
+    set({ run: { ...idleRun, status: 'running', runId: null }, pollTimer: null })
 
     let run_id: string
     try {
@@ -121,7 +125,51 @@ export const useStore = create<SwarmStore>((set, get) => ({
     }
 
     const ws = new WebSocket(runEventsUrl(run_id))
-    set({ ws, run: { ...idleRun, status: 'running', runId: run_id } })
+
+    // Safety net: the WebSocket is the live feed, but never the only source of
+    // truth - poll the snapshot and reconcile if the socket goes quiet.
+    const pollTimer = window.setInterval(async () => {
+      const state = get()
+      if (state.run.runId !== run_id || state.run.status !== 'running') {
+        window.clearInterval(pollTimer)
+        return
+      }
+      try {
+        const { run } = await api.get<{
+          run: {
+            status: RunState['status']
+            result: {
+              node_statuses?: Record<string, NodeRunState['status']>
+              outputs?: Record<string, unknown>
+              errors?: Record<string, string>
+              logs?: RunState['logs']
+            } | null
+          }
+        }>(`/api/runs/${run_id}`)
+        if (run.status === 'running') return
+        window.clearInterval(pollTimer)
+        set((s) => {
+          if (s.run.runId !== run_id) return s
+          const result = run.result ?? {}
+          const nodeStates = { ...s.run.nodeStates }
+          for (const [nid, status] of Object.entries(result.node_statuses ?? {})) {
+            nodeStates[nid] = {
+              ...nodeStates[nid],
+              status,
+              output: result.outputs?.[nid] ?? nodeStates[nid]?.output,
+              error: result.errors?.[nid] ?? nodeStates[nid]?.error,
+            }
+          }
+          const logs = s.run.logs.length > 0 ? s.run.logs : (result.logs ?? [])
+          return { run: { ...s.run, status: run.status, nodeStates, logs } }
+        })
+        get().ws?.close()
+      } catch {
+        /* transient - keep polling */
+      }
+    }, 1500)
+
+    set({ ws, pollTimer, run: { ...idleRun, status: 'running', runId: run_id } })
 
     ws.onmessage = (msg) => {
       const event = JSON.parse(msg.data)
@@ -188,6 +236,7 @@ export const useStore = create<SwarmStore>((set, get) => ({
 
   resetRun: () => {
     get().ws?.close()
-    set({ run: idleRun, ws: null })
+    if (get().pollTimer) window.clearInterval(get().pollTimer!)
+    set({ run: idleRun, ws: null, pollTimer: null })
   },
 }))
