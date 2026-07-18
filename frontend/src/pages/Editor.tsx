@@ -24,6 +24,7 @@ import {
   deserializeFlow,
   edgeLabel,
   serializeFlow,
+  wouldCreateCycle,
   type FlowNode,
 } from '../lib/flow'
 import { useStore } from '../store'
@@ -49,6 +50,8 @@ function EditorInner() {
   const startRun = useStore((s) => s.startRun)
   const resetRun = useStore((s) => s.resetRun)
   const runStatus = useStore((s) => s.run.status)
+  const notice = useStore((s) => s.notice)
+  const setNotice = useStore((s) => s.setNotice)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -60,6 +63,18 @@ function EditorInner() {
   }, [loadSpecs])
 
   const selectedNode = useMemo(() => nodes.find((n) => n.selected) ?? null, [nodes])
+  const hasTrigger = useMemo(
+    () => nodes.some((n) => specsByType[n.data.kind]?.inputs.length === 0),
+    [nodes, specsByType],
+  )
+
+  const isValidConnection = useCallback(
+    (connection: Edge | Connection) => {
+      if (!connection.source || !connection.target) return false
+      return !wouldCreateCycle(edges, connection.source, connection.target)
+    },
+    [edges],
+  )
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -82,6 +97,10 @@ function EditorInner() {
       if (!kind) return
       const spec = specsByType[kind]
       if (!spec) return
+      if (spec.inputs.length === 0 && hasTrigger) {
+        setNotice('Only one trigger per workflow')
+        return
+      }
 
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       let id = `${kind}_${idCounter.current++}`
@@ -96,7 +115,7 @@ function EditorInner() {
         { id, type: 'swarm', position, data: { kind, config } },
       ])
     },
-    [specsByType, screenToFlowPosition, nodes, setNodes],
+    [specsByType, screenToFlowPosition, nodes, setNodes, hasTrigger, setNotice],
   )
 
   const updateNodeConfig = useCallback(
@@ -215,8 +234,9 @@ function EditorInner() {
         onImport={handleImport}
       />
       <div className="editor-main">
-        <Palette />
+        <Palette hasTrigger={hasTrigger} />
         <div className="canvas-wrap" data-running={runStatus === 'running'}>
+          {notice && <div className="canvas-notice">{notice}</div>}
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -224,6 +244,7 @@ function EditorInner() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            isValidConnection={isValidConnection}
             onDrop={onDrop}
             onDragOver={onDragOver}
             defaultEdgeOptions={defaultEdgeOptions}

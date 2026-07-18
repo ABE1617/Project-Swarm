@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import { Trash2 } from 'lucide-react'
+import { fieldDefaults, fieldVisible } from '../lib/fields'
 import { useStore } from '../store'
 import type { ConfigField, SwarmNodeData } from '../types'
 
@@ -8,19 +9,6 @@ interface Props {
   onConfigChange: (nodeId: string, patch: Record<string, unknown>) => void
   onLabelChange: (nodeId: string, label: string) => void
   onDelete: (nodeId: string) => void
-}
-
-function fieldVisible(field: ConfigField, config: Record<string, unknown>): boolean {
-  if (!field.showIf) return true
-  return Object.entries(field.showIf).every(([key, expected]) => {
-    const actual = config[key] ?? defaultFor(key, field)
-    if (Array.isArray(expected)) return expected.includes(String(actual))
-    return String(actual) === String(expected)
-  })
-}
-
-function defaultFor(_key: string, _field: ConfigField): unknown {
-  return undefined
 }
 
 function jsonHint(value: unknown): string | null {
@@ -70,7 +58,9 @@ function FieldInput({
       return (
         <input
           type="number"
-          step="any"
+          step={field.step ?? 'any'}
+          min={field.min}
+          max={field.max}
           value={String(current)}
           placeholder={field.placeholder}
           onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
@@ -158,7 +148,7 @@ export default function ConfigPanel({ node, onConfigChange, onLabelChange, onDel
         />
       </label>
 
-      {spec.config_fields.filter((f) => fieldVisible(f, config)).map((field) => (
+      {spec.config_fields.filter((f) => fieldVisible(f, config, fieldDefaults(spec))).map((field) => (
         <label key={field.key} className="config-field">
           <span>
             {field.label}

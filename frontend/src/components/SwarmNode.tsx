@@ -1,5 +1,6 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { AlertCircle, Check, Minus } from 'lucide-react'
+import { missingRequired } from '../lib/fields'
 import { useStore } from '../store'
 import type { SwarmNodeData } from '../types'
 import NodeIcon from './NodeIcon'
@@ -32,6 +33,7 @@ export default function SwarmNode({ id, data, selected }: NodeProps) {
 
   const outputs = spec.outputs
   const inputs = spec.inputs
+  const missing = missingRequired(spec, nodeData.config ?? {})
 
   return (
     <div
@@ -66,6 +68,11 @@ export default function SwarmNode({ id, data, selected }: NodeProps) {
         <div className="node-subtitle">{nodeData.label ? spec.name : id}</div>
       </div>
       <StatusBadge nodeId={id} />
+      {missing.length > 0 && !status && (
+        <span className="node-warning" title={`Missing: ${missing.join(', ')}`}>
+          !
+        </span>
+      )}
 
       {outputs.map((handle, i) => (
         <Handle

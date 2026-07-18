@@ -12,7 +12,9 @@ interface SwarmStore {
   workflowName: string
   run: RunState
   ws: WebSocket | null
+  notice: string | null
 
+  setNotice: (message: string) => void
   setUser: (user: User | null) => void
   checkAuth: () => Promise<void>
   loadSpecs: () => Promise<void>
@@ -35,6 +37,14 @@ export const useStore = create<SwarmStore>((set, get) => ({
   workflowName: 'Untitled workflow',
   run: idleRun,
   ws: null,
+  notice: null,
+
+  setNotice: (message) => {
+    set({ notice: message })
+    window.setTimeout(() => {
+      if (get().notice === message) set({ notice: null })
+    }, 2800)
+  },
 
   setUser: (user) => set({ user, authChecked: true }),
 

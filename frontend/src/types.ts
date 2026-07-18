@@ -8,6 +8,9 @@ export interface ConfigField {
   placeholder?: string
   help?: string
   showIf?: Record<string, string | string[]>
+  min?: number
+  max?: number
+  step?: number
 }
 
 export interface NodeSpec {

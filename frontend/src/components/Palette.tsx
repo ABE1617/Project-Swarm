@@ -4,13 +4,22 @@ import { useStore } from '../store'
 import type { NodeSpec } from '../types'
 import NodeIcon from './NodeIcon'
 
-function PaletteItem({ spec }: { spec: NodeSpec }) {
+function PaletteItem({ spec, disabled }: { spec: NodeSpec; disabled: boolean }) {
   function onDragStart(e: DragEvent) {
+    if (disabled) {
+      e.preventDefault()
+      return
+    }
     e.dataTransfer.setData('application/swarm-node', spec.type)
     e.dataTransfer.effectAllowed = 'move'
   }
   return (
-    <div className="palette-item" draggable onDragStart={onDragStart} title={spec.description}>
+    <div
+      className={`palette-item ${disabled ? 'disabled' : ''}`}
+      draggable={!disabled}
+      onDragStart={onDragStart}
+      title={disabled ? 'Only one trigger per workflow' : spec.description}
+    >
       <div
         className="node-icon"
         style={{
@@ -25,13 +34,15 @@ function PaletteItem({ spec }: { spec: NodeSpec }) {
           {spec.name}
           {spec.source === 'custom' && <span className="badge-custom">custom</span>}
         </div>
-        <div className="palette-item-desc">{spec.description}</div>
+        <div className="palette-item-desc">
+          {disabled ? 'Only one trigger per workflow' : spec.description}
+        </div>
       </div>
     </div>
   )
 }
 
-export default function Palette() {
+export default function Palette({ hasTrigger }: { hasTrigger: boolean }) {
   const specs = useStore((s) => s.specs)
   const loadErrors = useStore((s) => s.nodeLoadErrors)
   const reloadSpecs = useStore((s) => s.reloadSpecs)
@@ -79,7 +90,11 @@ export default function Palette() {
         <div key={category} className="palette-group">
           <div className="palette-category">{category}</div>
           {items.map((spec) => (
-            <PaletteItem key={spec.type} spec={spec} />
+            <PaletteItem
+              key={spec.type}
+              spec={spec}
+              disabled={spec.inputs.length === 0 && hasTrigger}
+            />
           ))}
         </div>
       ))}

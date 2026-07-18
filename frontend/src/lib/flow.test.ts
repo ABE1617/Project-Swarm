@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { WorkflowDefinition } from '../types'
-import { deserializeFlow, edgeLabel, serializeFlow } from './flow'
+import { deserializeFlow, edgeLabel, serializeFlow, wouldCreateCycle } from './flow'
 
 const definition: WorkflowDefinition = {
   nodes: [
@@ -85,5 +85,26 @@ describe('deserializeFlow defaults', () => {
     const { edges } = deserializeFlow(definition)
     expect(edges[0].label).toBeUndefined()
     expect(edges[1].label).toBe('true')
+  })
+})
+
+describe('wouldCreateCycle', () => {
+  const edges = [
+    { source: 'a', target: 'b' },
+    { source: 'b', target: 'c' },
+  ]
+
+  it('rejects self-connections', () => {
+    expect(wouldCreateCycle(edges, 'a', 'a')).toBe(true)
+  })
+
+  it('rejects edges that close a loop', () => {
+    expect(wouldCreateCycle(edges, 'c', 'a')).toBe(true)
+    expect(wouldCreateCycle(edges, 'b', 'a')).toBe(true)
+  })
+
+  it('allows forward and parallel edges', () => {
+    expect(wouldCreateCycle(edges, 'a', 'c')).toBe(false)
+    expect(wouldCreateCycle(edges, 'c', 'd')).toBe(false)
   })
 })

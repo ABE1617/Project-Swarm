@@ -13,6 +13,31 @@ export function edgeLabel(sourceHandle?: string | null): string | undefined {
   return sourceHandle && sourceHandle !== 'out' ? sourceHandle : undefined
 }
 
+/** True if adding source -> target would close a loop (or is a self-connection). */
+export function wouldCreateCycle(
+  edges: Array<{ source: string; target: string }>,
+  source: string,
+  target: string,
+): boolean {
+  if (source === target) return true
+  const adj = new Map<string, string[]>()
+  for (const e of edges) {
+    const list = adj.get(e.source)
+    if (list) list.push(e.target)
+    else adj.set(e.source, [e.target])
+  }
+  const stack = [target]
+  const visited = new Set<string>()
+  while (stack.length) {
+    const nid = stack.pop()!
+    if (nid === source) return true
+    if (visited.has(nid)) continue
+    visited.add(nid)
+    for (const next of adj.get(nid) ?? []) stack.push(next)
+  }
+  return false
+}
+
 export function serializeFlow(nodes: FlowNode[], edges: Edge[]): WorkflowDefinition {
   return {
     nodes: nodes.map((n) => ({
