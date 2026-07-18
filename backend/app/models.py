@@ -39,6 +39,22 @@ class Workflow(Base):
     user: Mapped[User] = relationship(back_populates="workflows")
 
 
+class Credential(Base):
+    __tablename__ = "credentials"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    type: Mapped[str] = mapped_column(String(64))  # e.g. "google_oauth2"
+    data: Mapped[str] = mapped_column(Text)  # encrypted JSON (secrets, tokens)
+    account_email: Mapped[str] = mapped_column(String(255), default="")
+    connected: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
 class Execution(Base):
     __tablename__ = "executions"
 

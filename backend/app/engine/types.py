@@ -28,6 +28,10 @@ class NodeOutput:
     handle: str | None = None
 
 
+async def _no_credentials(_credential_id: Any) -> dict:
+    raise NodeExecutionError("Credentials are not available in this run context")
+
+
 @dataclass
 class NodeContext:
     """Everything a node's run() receives."""
@@ -36,6 +40,8 @@ class NodeContext:
     config: dict[str, Any]
     inputs: list[Any] = field(default_factory=list)
     log: Callable[[str, str], None] = lambda level, message: None
+    get_credential: Callable[[Any], Any] = _no_credentials
+    """Async: await ctx.get_credential(ctx.config["credential"]) -> secrets dict."""
 
     @property
     def input(self) -> Any:

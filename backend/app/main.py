@@ -11,7 +11,7 @@ from app.config import FRONTEND_DIST
 from app.db import SessionLocal, init_db
 from app.engine.registry import get_registry
 from app.models import Execution
-from app.routes import auth_routes, node_routes, run_routes, workflow_routes
+from app.routes import auth_routes, credential_routes, node_routes, run_routes, workflow_routes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -56,6 +56,7 @@ app.include_router(auth_routes.router)
 app.include_router(workflow_routes.router)
 app.include_router(run_routes.router)
 app.include_router(node_routes.router)
+app.include_router(credential_routes.router)
 
 
 if FRONTEND_DIST.exists():

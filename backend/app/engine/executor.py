@@ -79,6 +79,7 @@ async def execute_workflow(
     registry: NodeRegistry,
     run_input: Any = None,
     emit: EmitFn | None = None,
+    credential_resolver: Callable | None = None,
 ) -> dict:
     emit = emit or (lambda event: None)
     started = time.time()
@@ -260,6 +261,8 @@ async def execute_workflow(
 
         config = render_config(node.get("config", {}), scope)
         ctx = NodeContext(node_id=nid, config=config, inputs=active_inputs, log=make_log(nid))
+        if credential_resolver is not None:
+            ctx.get_credential = credential_resolver
         result = await asyncio.wait_for(spec.run(ctx), timeout=spec.timeout)
 
         if isinstance(result, NodeOutput):

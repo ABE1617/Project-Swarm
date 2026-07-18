@@ -95,9 +95,17 @@ class RunManager:
         return run
 
     async def _execute(self, run: Run, definition: dict, registry: NodeRegistry, run_input: Any):
+        from functools import partial
+
+        from app.engine.credentials import resolve_credential
+
         try:
             result = await execute_workflow(
-                definition, registry, run_input=run_input, emit=run.emit
+                definition,
+                registry,
+                run_input=run_input,
+                emit=run.emit,
+                credential_resolver=partial(resolve_credential, run.user_id),
             )
             run.status = result["status"]
             run.result = result

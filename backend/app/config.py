@@ -20,6 +20,10 @@ NODES_DIR.mkdir(parents=True, exist_ok=True)
 
 DATABASE_URL = os.environ.get("SWARM_DATABASE_URL", f"sqlite:///{INSTANCE_DIR / 'swarm.db'}")
 
+# Where the app is reachable for OAuth redirects (register this /api/oauth/google/callback
+# as an authorized redirect URI in the Google Cloud Console).
+PUBLIC_URL = os.environ.get("SWARM_PUBLIC_URL", "http://localhost:8000").rstrip("/")
+
 FRONTEND_DIST = PROJECT_DIR / "frontend" / "dist"
 
 SESSION_COOKIE = "swarm_session"
